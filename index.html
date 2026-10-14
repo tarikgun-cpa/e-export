@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>İhracat Yönetim Sistemi</title>
+  <link rel="icon" type="image/x-icon" href="ico.ico" />
+  <link rel="shortcut icon" type="image/x-icon" href="ico.ico" />
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -420,10 +422,9 @@
     };
 
     // =========================================================================
-    // KULLANICI GİRİŞ & KAYIT EKRANI (E-POSTA VE ŞİFRE İLE)
+    // KULLANICI GİRİŞ EKRANI (SADECE YETKİLİ GİRİŞİ)
     // =========================================================================
     function AuthScreen() {
-      const [isLogin, setIsLogin] = useState(true);
       const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
       const [error, setError] = useState('');
@@ -435,19 +436,11 @@
         setError('');
         setLoading(true);
         try {
-          if (isLogin) {
-            await auth.signInWithEmailAndPassword(email.trim(), password);
-          } else {
-            await auth.createUserWithEmailAndPassword(email.trim(), password);
-          }
+          await auth.signInWithEmailAndPassword(email.trim(), password);
         } catch (err) {
           let msg = "Giriş yapılırken bir hata oluştu.";
           if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
             msg = "E-posta adresi veya şifre hatalı!";
-          } else if (err.code === 'auth/email-already-in-use') {
-            msg = "Bu e-posta adresi zaten kayıtlı.";
-          } else if (err.code === 'auth/weak-password') {
-            msg = "Şifre en az 6 karakter olmalıdır.";
           } else {
             msg = err.message;
           }
@@ -479,27 +472,10 @@
                 <Building2 className="w-8 h-8 text-blue-400" />
               </div>
               <h1 className="text-xl font-black text-white tracking-wide">İHRACAT YÖNETİM SİSTEMİ</h1>
-              <p className="text-xs text-slate-400 mt-1">Bulut Tabanlı Evrak & Çeklist Platformu</p>
+              <p className="text-xs text-slate-400 mt-1">Yetkili Kullanıcı Girişi</p>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="flex bg-slate-100 p-1 rounded-lg mb-2">
-                <button
-                  type="button"
-                  onClick={() => { setIsLogin(true); setError(''); }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${isLogin ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600'}`}
-                >
-                  Giriş Yap
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setIsLogin(false); setError(''); }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${!isLogin ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600'}`}
-                >
-                  Yeni Hesap Oluştur
-                </button>
-              </div>
-
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-xs font-semibold">
                   {error}
@@ -540,13 +516,11 @@
                 </div>
               </div>
 
-              {isLogin && (
-                <div className="text-right">
-                  <button type="button" onClick={handleResetPassword} className="text-xs text-blue-600 hover:underline font-medium">
-                    Şifremi Unuttum
-                  </button>
-                </div>
-              )}
+              <div className="text-right">
+                <button type="button" onClick={handleResetPassword} className="text-xs text-blue-600 hover:underline font-medium">
+                  Şifremi Unuttum
+                </button>
+              </div>
 
               <button
                 type="submit"
@@ -554,7 +528,7 @@
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-3 rounded-lg font-bold text-sm transition-colors flex items-center justify-center shadow-lg"
               >
                 {loading ? <Loader2 className="mr-2" /> : null}
-                {isLogin ? 'Sisteme Giriş Yap' : 'Kayıt Ol ve Başla'}
+                Sisteme Giriş Yap
               </button>
             </form>
           </div>
@@ -884,13 +858,17 @@
     function Sidebar({ exporters, selectedId, onSelect, onOpenAdd, onOpenEdit, onDelete, user, onMigrate, isMigrating }) {
       return (
         <div className="w-72 bg-slate-900 text-slate-300 flex flex-col shadow-xl z-20 h-full">
-          <div className="p-5 bg-slate-950 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-white flex items-center">
-              <Building2 className="w-6 h-6 mr-2 text-blue-400" />
-              İhracatçılar
-            </h2>
+          <div className="p-4 bg-slate-950 flex justify-between items-center border-b border-slate-800">
+            <div className="flex items-center">
+              <img 
+                src="logo.png" 
+                alt="Logo" 
+                className="h-10 max-w-[155px] object-contain"
+                onError={(e) => { e.currentTarget.src = 'ico.ico'; }}
+              />
+            </div>
             {user && (
-              <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+              <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0">
                 <Cloud size={11} /> Bulut Aktif
               </span>
             )}
@@ -1152,6 +1130,7 @@
     }
 
     function CustomerManager({ exporterId, data, onSave, onDelete }) {
+      const [isFormOpen, setIsFormOpen] = useState(false);
       const [editingId, setEditingId] = useState(null);
       const [name, setName] = useState('');
       const [address, setAddress] = useState('');
@@ -1165,6 +1144,14 @@
         setEditingId(null);
         setName(''); setAddress(''); setCountry(''); setVatNo(''); setHtsNo(''); setLogo('');
         setContacts([{ id: generateId(), name: '', email: '' }]);
+        setIsFormOpen(false);
+      };
+
+      const openNewForm = () => {
+        setEditingId(null);
+        setName(''); setAddress(''); setCountry(''); setVatNo(''); setHtsNo(''); setLogo('');
+        setContacts([{ id: generateId(), name: '', email: '' }]);
+        setIsFormOpen(true);
       };
 
       const startEdit = (item) => {
@@ -1172,6 +1159,7 @@
         setName(item.name || ''); setAddress(item.address || ''); setCountry(item.country || '');
         setVatNo(item.vatNo || ''); setHtsNo(item.htsNo || ''); setLogo(item.logo || '');
         setContacts(item.contacts && item.contacts.length > 0 ? item.contacts : [{ id: generateId(), name: '', email: '' }]);
+        setIsFormOpen(true);
       };
 
       const handleLogoChange = async (e) => {
@@ -1185,70 +1173,107 @@
       const handleSubmit = (e) => {
         e.preventDefault();
         if (!name.trim()) return;
-        onSave({ id: editingId, exporterId, name: name.trim(), address: address.trim(), country: country.trim(), vatNo: vatNo.trim(), htsNo: htsNo.trim(), logo, contacts: contacts.filter(c => c.name.trim() || c.email.trim()) });
+        onSave({
+          id: editingId,
+          exporterId,
+          name: name.trim(),
+          address: address.trim(),
+          country: country.trim(),
+          vatNo: vatNo.trim(),
+          htsNo: htsNo.trim(),
+          logo,
+          contacts: contacts.filter(c => c.name.trim() || c.email.trim())
+        });
         resetForm();
       };
 
       return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-5 border-b border-slate-200 bg-slate-50/50">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-              <Users className="w-5 h-5 mr-2 text-blue-500" /> {editingId ? 'Müşteri Kartını Düzenle' : 'Yeni Müşteri Ekle'}
+          <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-slate-800 flex items-center">
+              <Users className="w-5 h-5 mr-2 text-blue-500" /> Müşteri Listesi
             </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">FİRMA ADI *</label>
-                  <input type="text" required className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={name} onChange={e => setName(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">ÜLKE</label>
-                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={country} onChange={e => setCountry(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">VAT NO</label>
-                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={vatNo} onChange={e => setVatNo(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">HTS NO</label>
-                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={htsNo} onChange={e => setHtsNo(e.target.value)} />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">ADRES</label>
-                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={address} onChange={e => setAddress(e.target.value)} />
-                </div>
-              </div>
-              <div className="flex items-center gap-4 pt-1">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">FİRMA LOGO</label>
-                  <input type="file" accept="image/*" onChange={handleLogoChange} className="text-xs text-slate-500" />
-                </div>
-                {logo && (
-                  <div className="relative border p-1 rounded bg-white">
-                    <img src={logo} alt="Müşteri Logo" className="h-10 object-contain" />
-                    <button type="button" onClick={() => setLogo('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><X size={12} /></button>
-                  </div>
-                )}
-              </div>
-              <div className="border-t pt-3">
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-xs font-bold text-slate-700">YETKİLİ KİŞİLER</label>
-                  <button type="button" onClick={() => setContacts([...contacts, { id: generateId(), name: '', email: '' }])} className="text-xs bg-slate-200 text-slate-700 px-2 py-1 rounded flex items-center"><Plus size={14} className="mr-1" /> Ekle</button>
-                </div>
-                {contacts.map((c) => (
-                  <div key={c.id} className="flex gap-2 mb-2 items-center">
-                    <input type="text" placeholder="Ad Soyad" className="flex-1 px-3 py-1.5 border rounded text-sm" value={c.name} onChange={e => setContacts(contacts.map(item => item.id === c.id ? { ...item, name: e.target.value } : item))} />
-                    <input type="email" placeholder="Mail" className="flex-1 px-3 py-1.5 border rounded text-sm" value={c.email} onChange={e => setContacts(contacts.map(item => item.id === c.id ? { ...item, email: e.target.value } : item))} />
-                    {contacts.length > 1 && <button type="button" onClick={() => setContacts(contacts.filter(item => item.id !== c.id))} className="text-red-500 p-1"><Trash2 size={16} /></button>}
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-end gap-2">
-                {editingId && <button type="button" onClick={resetForm} className="bg-slate-200 px-4 py-2 rounded-lg text-sm">İptal</button>}
-                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold"><Save size={16} className="inline mr-1" /> {editingId ? 'Güncelle' : 'Kaydet'}</button>
-              </div>
-            </form>
+            <button
+              type="button"
+              onClick={openNewForm}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center shadow-sm text-sm transition-colors"
+            >
+              <Plus size={18} className="mr-1.5" /> Yeni Müşteri Ekle
+            </button>
           </div>
+
+          {isFormOpen && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+              <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6 relative">
+                <div className="flex justify-between items-center border-b pb-3 mb-4">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center">
+                    <Users className="w-5 h-5 mr-2 text-blue-500" />
+                    {editingId ? 'Müşteri Kartını Düzenle' : 'Yeni Müşteri Ekle'}
+                  </h3>
+                  <button type="button" onClick={resetForm} className="text-slate-400 hover:text-slate-600">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">FİRMA ADI *</label>
+                      <input type="text" required className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={name} onChange={e => setName(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">ÜLKE</label>
+                      <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={country} onChange={e => setCountry(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">VAT NO</label>
+                      <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={vatNo} onChange={e => setVatNo(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">HTS NO</label>
+                      <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={htsNo} onChange={e => setHtsNo(e.target.value)} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">ADRES</label>
+                      <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={address} onChange={e => setAddress(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 pt-1">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">FİRMA LOGO</label>
+                      <input type="file" accept="image/*" onChange={handleLogoChange} className="text-xs text-slate-500" />
+                    </div>
+                    {logo && (
+                      <div className="relative border p-1 rounded bg-white">
+                        <img src={logo} alt="Müşteri Logo" className="h-10 object-contain" />
+                        <button type="button" onClick={() => setLogo('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><X size={12} /></button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-xs font-bold text-slate-700">YETKİLİ KİŞİLER</label>
+                      <button type="button" onClick={() => setContacts([...contacts, { id: generateId(), name: '', email: '' }])} className="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded flex items-center font-semibold"><Plus size={14} className="mr-1" /> Ekle</button>
+                    </div>
+                    <div className="max-h-40 overflow-y-auto pr-1">
+                      {contacts.map((c) => (
+                        <div key={c.id} className="flex gap-2 mb-2 items-center">
+                          <input type="text" placeholder="Ad Soyad" className="flex-1 px-3 py-1.5 border rounded text-sm outline-none" value={c.name} onChange={e => setContacts(contacts.map(item => item.id === c.id ? { ...item, name: e.target.value } : item))} />
+                          <input type="email" placeholder="Mail" className="flex-1 px-3 py-1.5 border rounded text-sm outline-none" value={c.email} onChange={e => setContacts(contacts.map(item => item.id === c.id ? { ...item, email: e.target.value } : item))} />
+                          {contacts.length > 1 && <button type="button" onClick={() => setContacts(contacts.filter(item => item.id !== c.id))} className="text-red-500 p-1"><Trash2 size={16} /></button>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 border-t pt-4">
+                    <button type="button" onClick={resetForm} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium">İptal</button>
+                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-bold flex items-center"><Save size={16} className="mr-1.5" /> {editingId ? 'Güncelle' : 'Kaydet'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -1268,11 +1293,11 @@
                     <td className="p-3 text-slate-600">{item.country || '-'} / VAT: {item.vatNo || '-'}</td>
                     <td className="p-3 text-xs text-slate-600">{item.contacts?.map((c, i) => <div key={i}>{c.name} ({c.email})</div>)}</td>
                     <td className="p-3 text-center">
-                      <button type="button" onClick={() => startEdit(item)} className="text-blue-600 p-1"><Edit size={16} /></button>
-                      <button type="button" onClick={() => onDelete(item.id)} className="text-red-500 p-1"><Trash2 size={16} /></button>
+                      <button type="button" onClick={() => startEdit(item)} className="text-blue-600 p-1" title="Düzenle"><Edit size={16} /></button>
+                      <button type="button" onClick={() => onDelete(item.id)} className="text-red-500 p-1" title="Sil"><Trash2 size={16} /></button>
                     </td>
                   </tr>
-                )) : <tr><td colSpan={5} className="p-8 text-center text-slate-500">Müşteri kaydı bulunmuyor.</td></tr>}
+                )) : <tr><td colSpan={5} className="p-8 text-center text-slate-500">Müşteri kaydı bulunmuyor. Sağ üstten yeni müşteri ekleyebilirsiniz.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -1281,6 +1306,7 @@
     }
 
     function TransporterManager({ exporterId, data, onSave, onDelete }) {
+      const [isFormOpen, setIsFormOpen] = useState(false);
       const [editingId, setEditingId] = useState(null);
       const [name, setName] = useState('');
       const [address, setAddress] = useState('');
@@ -1293,11 +1319,19 @@
       const resetForm = () => {
         setEditingId(null);
         setName(''); setAddress(''); setVatNo(''); setEmail(''); setDeliveryTerm('FOB'); setTransportType('Karayolu'); setLogo('');
+        setIsFormOpen(false);
+      };
+
+      const openNewForm = () => {
+        setEditingId(null);
+        setName(''); setAddress(''); setVatNo(''); setEmail(''); setDeliveryTerm('FOB'); setTransportType('Karayolu'); setLogo('');
+        setIsFormOpen(true);
       };
 
       const startEdit = (item) => {
         setEditingId(item.id);
         setName(item.name || ''); setAddress(item.address || ''); setVatNo(item.vatNo || ''); setEmail(item.email || ''); setDeliveryTerm(item.deliveryTerm || 'FOB'); setTransportType(item.transportType || 'Karayolu'); setLogo(item.logo || '');
+        setIsFormOpen(true);
       };
 
       const handleLogoChange = async (e) => {
@@ -1311,65 +1345,100 @@
       const handleSubmit = (e) => {
         e.preventDefault();
         if (!name.trim()) return;
-        onSave({ id: editingId, exporterId, name: name.trim(), address: address.trim(), vatNo: vatNo.trim(), email: email.trim(), deliveryTerm, transportType, logo });
+        onSave({
+          id: editingId,
+          exporterId,
+          name: name.trim(),
+          address: address.trim(),
+          vatNo: vatNo.trim(),
+          email: email.trim(),
+          deliveryTerm,
+          transportType,
+          logo
+        });
         resetForm();
       };
 
       return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-5 border-b border-slate-200 bg-slate-50/50">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-              <Truck className="w-5 h-5 mr-2 text-blue-500" /> {editingId ? 'Nakliyeci Kartını Düzenle' : 'Yeni Nakliyeci Ekle'}
+          <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-slate-800 flex items-center">
+              <Truck className="w-5 h-5 mr-2 text-blue-500" /> Nakliyeci Listesi
             </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">FİRMA ADI *</label>
-                  <input type="text" required className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={name} onChange={e => setName(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">VERGİ NO (V.NO)</label>
-                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={vatNo} onChange={e => setVatNo(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">E-MAİL ADRESİ</label>
-                  <input type="email" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={email} onChange={e => setEmail(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">TESLİM ŞEKLİ</label>
-                  <select className="w-full px-3 py-2 border rounded-lg text-sm outline-none bg-white" value={deliveryTerm} onChange={e => setDeliveryTerm(e.target.value)}>
-                    <option value="FOB">FOB</option><option value="EXW">EXW</option><option value="CIF">CIF</option><option value="DAP">DAP</option><option value="DDP">DDP</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">TAŞIMACILIK TÜRÜ</label>
-                  <select className="w-full px-3 py-2 border rounded-lg text-sm outline-none bg-white" value={transportType} onChange={e => setTransportType(e.target.value)}>
-                    <option value="Karayolu">Karayolu</option><option value="Denizyolu">Denizyolu</option><option value="Havayolu">Havayolu</option><option value="Demiryolu">Demiryolu</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">ADRES</label>
-                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={address} onChange={e => setAddress(e.target.value)} />
-                </div>
-              </div>
-              <div className="flex items-center gap-4 pt-1">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">NAKLİYECİ LOGO</label>
-                  <input type="file" accept="image/*" onChange={handleLogoChange} className="text-xs text-slate-500" />
-                </div>
-                {logo && (
-                  <div className="relative border p-1 rounded bg-white">
-                    <img src={logo} alt="Nakliyeci Logo" className="h-10 object-contain" />
-                    <button type="button" onClick={() => setLogo('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><X size={12} /></button>
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-end gap-2">
-                {editingId && <button type="button" onClick={resetForm} className="bg-slate-200 px-4 py-2 rounded-lg text-sm">İptal</button>}
-                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold"><Save size={16} className="inline mr-1" /> {editingId ? 'Güncelle' : 'Kaydet'}</button>
-              </div>
-            </form>
+            <button
+              type="button"
+              onClick={openNewForm}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center shadow-sm text-sm transition-colors"
+            >
+              <Plus size={18} className="mr-1.5" /> Yeni Nakliyeci Ekle
+            </button>
           </div>
+
+          {isFormOpen && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+              <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6 relative">
+                <div className="flex justify-between items-center border-b pb-3 mb-4">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center">
+                    <Truck className="w-5 h-5 mr-2 text-blue-500" />
+                    {editingId ? 'Nakliyeci Kartını Düzenle' : 'Yeni Nakliyeci Ekle'}
+                  </h3>
+                  <button type="button" onClick={resetForm} className="text-slate-400 hover:text-slate-600">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">FİRMA ADI *</label>
+                      <input type="text" required className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={name} onChange={e => setName(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">VERGİ NO (V.NO)</label>
+                      <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={vatNo} onChange={e => setVatNo(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">E-MAİL ADRESİ</label>
+                      <input type="email" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">TESLİM ŞEKLİ</label>
+                      <select className="w-full px-3 py-2 border rounded-lg text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500" value={deliveryTerm} onChange={e => setDeliveryTerm(e.target.value)}>
+                        <option value="FOB">FOB</option><option value="EXW">EXW</option><option value="CIF">CIF</option><option value="DAP">DAP</option><option value="DDP">DDP</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">TAŞIMACILIK TÜRÜ</label>
+                      <select className="w-full px-3 py-2 border rounded-lg text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500" value={transportType} onChange={e => setTransportType(e.target.value)}>
+                        <option value="Karayolu">Karayolu</option><option value="Denizyolu">Denizyolu</option><option value="Havayolu">Havayolu</option><option value="Demiryolu">Demiryolu</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">ADRES</label>
+                      <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={address} onChange={e => setAddress(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 pt-1">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">NAKLİYECİ LOGO</label>
+                      <input type="file" accept="image/*" onChange={handleLogoChange} className="text-xs text-slate-500" />
+                    </div>
+                    {logo && (
+                      <div className="relative border p-1 rounded bg-white">
+                        <img src={logo} alt="Nakliyeci Logo" className="h-10 object-contain" />
+                        <button type="button" onClick={() => setLogo('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><X size={12} /></button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-2 border-t pt-4">
+                    <button type="button" onClick={resetForm} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium">İptal</button>
+                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-bold flex items-center"><Save size={16} className="mr-1.5" /> {editingId ? 'Güncelle' : 'Kaydet'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -1395,7 +1464,7 @@
                       <button type="button" onClick={() => onDelete(item.id)} className="text-red-500 p-1" title="Sil"><Trash2 size={16} /></button>
                     </td>
                   </tr>
-                )) : <tr><td colSpan={6} className="p-8 text-center text-slate-500">Nakliyeci kaydı bulunmuyor.</td></tr>}
+                )) : <tr><td colSpan={6} className="p-8 text-center text-slate-500">Nakliyeci kaydı bulunmuyor. Sağ üstten yeni nakliyeci ekleyebilirsiniz.</td></tr>}
               </tbody>
             </table>
           </div>
