@@ -1,0 +1,3336 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>İhracat Yönetim Sistemi</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Babel (JSX Derleyici) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  
+  <!-- SheetJS (XLSX) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- Firebase SDK (App, Auth, Firestore) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    @media print {
+      @page { size: A4 portrait; margin: 5mm; }
+      html, body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .no-print { display: none !important; }
+      .print-modal-wrapper {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+        z-index: 99999 !important;
+      }
+      .print-modal-inner {
+        box-shadow: none !important;
+        border: none !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        display: block !important;
+        background: #ffffff !important;
+      }
+      .print-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: #ffffff !important;
+        overflow: visible !important;
+      }
+      .print-page {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 auto !important;
+        padding: 3mm 4mm !important;
+        width: 200mm !important;
+        max-width: 200mm !important;
+        min-height: 284mm !important;
+        page-break-after: always;
+        page-break-inside: avoid;
+        box-sizing: border-box !important;
+      }
+      .print-page-landscape {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 auto !important;
+        padding: 4mm 5mm !important;
+        width: 286mm !important;
+        max-width: 286mm !important;
+        min-height: 195mm !important;
+        page-break-after: always;
+        page-break-inside: avoid;
+        box-sizing: border-box !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // React Güvenli Lucide İkon Bileşeni (Tam Uyumlu)
+    const Icon = ({ name, className = "w-5 h-5", size }) => {
+      const iconRef = React.useRef(null);
+
+      React.useEffect(() => {
+        if (!iconRef.current || !window.lucide || !window.lucide.icons) return;
+        
+        const pascalName = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+        const iconObj = window.lucide.icons[pascalName] || window.lucide.icons[name];
+        
+        if (iconObj) {
+          const svgNode = window.lucide.createElement(iconObj);
+          
+          svgNode.setAttribute("class", className);
+          if (size) {
+            svgNode.setAttribute("width", size);
+            svgNode.setAttribute("height", size);
+          }
+          
+          iconRef.current.innerHTML = "";
+          iconRef.current.appendChild(svgNode);
+        }
+      }, [name, className, size]);
+
+      return <span ref={iconRef} className={`inline-flex items-center justify-center shrink-0 ${className}`} style={{ width: size, height: size }} />;
+    };
+
+    const Building2 = (props) => <Icon name="building-2" className="w-6 h-6 text-blue-600" {...props} />;
+    const Users = (props) => <Icon name="users" className="w-5 h-5 text-blue-500" {...props} />;
+    const Truck = (props) => <Icon name="truck" className="w-5 h-5 text-blue-500" {...props} />;
+    const FileSpreadsheet = (props) => <Icon name="file-spreadsheet" className="w-5 h-5 text-blue-500" {...props} />;
+    const Plus = (props) => <Icon name="plus" size={18} {...props} />;
+    const Upload = (props) => <Icon name="upload" size={18} {...props} />;
+    const Save = (props) => <Icon name="save" size={20} {...props} />;
+    const Trash2 = (props) => <Icon name="trash-2" size={16} {...props} />;
+    const Edit = (props) => <Icon name="edit" size={16} {...props} />;
+    const Printer = (props) => <Icon name="printer" size={18} {...props} />;
+    const ChevronRight = (props) => <Icon name="chevron-right" size={16} {...props} />;
+    const FileText = (props) => <Icon name="file-text" size={18} {...props} />;
+    const ArrowLeft = (props) => <Icon name="arrow-left" size={24} {...props} />;
+    const X = (props) => <Icon name="x" size={18} {...props} />;
+    const Layers = (props) => <Icon name="layers" size={14} {...props} />;
+    const Loader2 = (props) => <Icon name="loader-2" className="w-5 h-5 animate-spin" {...props} />;
+    const Download = (props) => <Icon name="download" size={18} {...props} />;
+
+    const LogOut = (props) => <Icon name="log-out" size={16} {...props} />;
+    const Cloud = (props) => <Icon name="cloud" size={16} {...props} />;
+    const Lock = (props) => <Icon name="lock" size={18} {...props} />;
+    const Mail = (props) => <Icon name="mail" size={18} {...props} />;
+
+    // =========================================================================
+    // FIREBASE YAPILANDIRMASI (Kendi Firebase Console bilgilerinizi buraya girin)
+    // =========================================================================
+    const FIREBASE_CONFIG = {
+      apiKey: "BURAYA_API_KEY_YAZIN",
+      authDomain: "BURAYA_PROJE_ID.firebaseapp.com",
+      projectId: "BURAYA_PROJE_ID",
+      storageBucket: "BURAYA_PROJE_ID.appspot.com",
+      messagingSenderId: "BURAYA_SENDER_ID",
+      appId: "BURAYA_APP_ID"
+    };
+
+    const isFirebaseConfigured = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.includes("BURAYA_");
+    let auth = null;
+    let db = null;
+
+    if (isFirebaseConfigured && window.firebase) {
+      if (!firebase.apps.length) {
+        firebase.initializeApp(FIREBASE_CONFIG);
+      }
+      auth = firebase.auth();
+      db = firebase.firestore();
+    }
+
+    // Ortak şirket verisi olarak çalışması için koleksiyon yolu:
+    // Eğer her kullanıcı sadece kendi verisini görsün isterseniz 'shared_workspace' yerine user.uid kullanabilirsiniz.
+    const WORKSPACE_ID = 'company_shared_workspace';
+    const getColRef = (colName) => db.collection('workspaces').doc(WORKSPACE_ID).collection(colName);
+
+    const STORAGE_KEYS = {
+      EXPORTERS: 'export_app_exporters_v3',
+      CUSTOMERS: 'export_app_customers_v3',
+      TRANSPORTERS: 'export_app_transporters_v3',
+      CHECKLISTS: 'export_app_checklists_v3',
+      SELECTED_EXP: 'export_app_selected_exp_v3'
+    };
+
+    const loadFromStorage = (key, fallback) => {
+      try {
+        const item = localStorage.getItem(key);
+        if (!item) return fallback;
+        const parsed = JSON.parse(item);
+        return Array.isArray(fallback) && !Array.isArray(parsed) ? fallback : parsed;
+      } catch (err) {
+        return fallback;
+      }
+    };
+
+    const saveToStorage = (key, value) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (err) {}
+    };
+
+    const compressImage = (file, maxWidth = 400, maxHeight = 400, quality = 0.8) => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              }
+            } else {
+              if (height > maxHeight) {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/png', quality));
+          };
+          img.onerror = () => resolve('');
+          img.src = e.target.result;
+        };
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
+    };
+
+    const generateId = () => {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      return Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+    };
+
+    const formatDateTR = (dateStr) => {
+      if (!dateStr) return '';
+      const s = String(dateStr).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const [y, m, d] = s.split('-');
+        return `${d}-${m}-${y}`;
+      }
+      if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) {
+        return s.replace(/\./g, '-');
+      }
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+        return s.replace(/\//g, '-');
+      }
+      return s;
+    };
+
+    const PALLET_COLORS = [
+      'bg-amber-100/75',
+      'bg-sky-100/75',
+      'bg-emerald-100/75',
+      'bg-purple-100/75',
+      'bg-rose-100/75',
+      'bg-teal-100/75'
+    ];
+
+    const processTableRows = (items) => {
+      if (!Array.isArray(items) || items.length === 0) return [];
+      const renderInfo = [];
+      let i = 0;
+      let mergedGroupCounter = 0;
+      const palletColorMap = {};
+
+      while (i < items.length) {
+        const item = items[i];
+        if (!item) { i++; continue; }
+        const currentPallet = String(item.paletNo || '').trim();
+        if (currentPallet !== '') {
+          let j = i + 1;
+          while (j < items.length && items[j] && String(items[j].paletNo || '').trim() === currentPallet) { j++; }
+          const span = j - i;
+          const isMerged = span > 1;
+
+          let groupColor = 'bg-white';
+          if (isMerged) {
+            if (!palletColorMap[currentPallet]) {
+              palletColorMap[currentPallet] = PALLET_COLORS[mergedGroupCounter % PALLET_COLORS.length];
+              mergedGroupCounter++;
+            }
+            groupColor = palletColorMap[currentPallet];
+          }
+
+          for (let k = i; k < j; k++) {
+            if (items[k]) {
+              renderInfo[k] = {
+                item: items[k],
+                originalIndex: k,
+                isFirstInGroup: (k === i),
+                rowSpan: (k === i) ? span : 0,
+                groupColor: groupColor,
+                isMerged: isMerged
+              };
+            }
+          }
+          i = j;
+        } else {
+          renderInfo[i] = { 
+            item: item, 
+            originalIndex: i, 
+            isFirstInGroup: true, 
+            rowSpan: 1, 
+            groupColor: 'bg-white',
+            isMerged: false 
+          };
+          i++;
+        }
+      }
+      return renderInfo.filter(Boolean);
+    };
+
+    const calculateTotals = (items, processedRows) => {
+      let totalAdet = 0;
+      let totalNetKg = 0;
+      let totalBrutKg = 0;
+      let totalTutar = 0;
+      const uniquePallets = new Set();
+
+      const parseNum = (val) => {
+        if (typeof val === 'number') return isNaN(val) ? 0 : val;
+        if (!val) return 0;
+        let s = String(val).replace(/\s/g, '');
+        if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
+        else if (s.includes(',')) s = s.replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+      };
+
+      processedRows.forEach(row => {
+        const item = row.item;
+        const adet = parseNum(item.adet);
+        const fiyat = parseNum(item.fiyat);
+        const tutar = parseNum(item.tutar) || (adet * fiyat);
+        const netKg = parseNum(item.netKg);
+
+        totalAdet += adet;
+        totalNetKg += netKg;
+        totalTutar += tutar;
+
+        const pNo = (item.paletNo || '').trim();
+        if (pNo) uniquePallets.add(pNo);
+
+        if (row.isFirstInGroup) {
+          const brut = parseNum(item.brutKg);
+          totalBrutKg += brut;
+        }
+      });
+
+      return { totalAdet, totalNetKg, totalBrutKg, totalTutar, paletCount: uniquePallets.size };
+    };
+
+    const getSymbol = (curr) => {
+       if(curr === 'EUR') return '€';
+       if(curr === 'USD') return '$';
+       if(curr === 'TRY') return '₺';
+       if(curr === 'GBP') return '£';
+       return curr;
+    };
+
+    const getAmountInWords = (amount, currencyCode) => {
+        if (!amount) return "";
+        const units = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+        const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+        const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+        
+        const convertLess1000 = (n) => {
+            if (n === 0) return "";
+            let parts = [];
+            if (n >= 100) { parts.push(units[Math.floor(n / 100)] + " Hundred"); n %= 100; }
+            if (n >= 10 && n < 20) { parts.push(teens[n - 10]); }
+            else if (n >= 20) {
+              const t = tens[Math.floor(n / 10)];
+              const u = n % 10 > 0 ? " " + units[n % 10] : "";
+              parts.push(t + u);
+            } else if (n > 0) { parts.push(units[n]); }
+            return parts.join(" ");
+        };
+        
+        let intPart = Math.floor(amount);
+        let decPart = Math.round((amount - intPart) * 100);
+        
+        let wordParts = ["Only"];
+        if (intPart >= 1000000) { wordParts.push(convertLess1000(Math.floor(intPart / 1000000)) + " Million"); intPart %= 1000000; }
+        if (intPart >= 1000) { wordParts.push(convertLess1000(Math.floor(intPart / 1000)) + " Thousand"); intPart %= 1000; }
+        if (intPart > 0) { wordParts.push(convertLess1000(intPart)); }
+        if (wordParts.length === 1) wordParts.push("Zero");
+        
+        if (decPart > 0) {
+            wordParts.push("and " + convertLess1000(decPart) + " Cents");
+        }
+        
+        const currName = currencyCode === 'EUR' ? 'EURO' : currencyCode === 'USD' ? 'DOLLARS' : currencyCode;
+        wordParts.push(currName);
+        return wordParts.join(" ");
+    };
+
+    // =========================================================================
+    // KULLANICI GİRİŞ & KAYIT EKRANI (E-POSTA VE ŞİFRE İLE)
+    // =========================================================================
+    function AuthScreen() {
+      const [isLogin, setIsLogin] = useState(true);
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [error, setError] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [resetSent, setResetSent] = useState(false);
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+          if (isLogin) {
+            await auth.signInWithEmailAndPassword(email.trim(), password);
+          } else {
+            await auth.createUserWithEmailAndPassword(email.trim(), password);
+          }
+        } catch (err) {
+          let msg = "Giriş yapılırken bir hata oluştu.";
+          if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+            msg = "E-posta adresi veya şifre hatalı!";
+          } else if (err.code === 'auth/email-already-in-use') {
+            msg = "Bu e-posta adresi zaten kayıtlı.";
+          } else if (err.code === 'auth/weak-password') {
+            msg = "Şifre en az 6 karakter olmalıdır.";
+          } else {
+            msg = err.message;
+          }
+          setError(msg);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleResetPassword = async () => {
+        if (!email.trim()) {
+          setError("Şifre sıfırlama bağlantısı için lütfen önce e-posta adresinizi yazın.");
+          return;
+        }
+        try {
+          await auth.sendPasswordResetEmail(email.trim());
+          setResetSent(true);
+          setError('');
+        } catch (err) {
+          setError("Şifre sıfırlama e-postası gönderilemedi: " + err.message);
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-700">
+            <div className="bg-slate-950 p-6 text-center border-b border-slate-800">
+              <div className="w-14 h-14 bg-blue-600/20 border border-blue-500/40 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Building2 className="w-8 h-8 text-blue-400" />
+              </div>
+              <h1 className="text-xl font-black text-white tracking-wide">İHRACAT YÖNETİM SİSTEMİ</h1>
+              <p className="text-xs text-slate-400 mt-1">Bulut Tabanlı Evrak & Çeklist Platformu</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="flex bg-slate-100 p-1 rounded-lg mb-2">
+                <button
+                  type="button"
+                  onClick={() => { setIsLogin(true); setError(''); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${isLogin ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600'}`}
+                >
+                  Giriş Yap
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsLogin(false); setError(''); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${!isLogin ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600'}`}
+                >
+                  Yeni Hesap Oluştur
+                </button>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-xs font-semibold">
+                  {error}
+                </div>
+              )}
+
+              {resetSent && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-3 rounded-lg text-xs font-semibold">
+                  Şifre sıfırlama bağlantısı e-posta adresinize gönderildi!
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">E-POSTA ADRESİ</label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="ornek@firma.com"
+                    className="w-full pl-3 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">ŞİFRE</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-3 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {isLogin && (
+                <div className="text-right">
+                  <button type="button" onClick={handleResetPassword} className="text-xs text-blue-600 hover:underline font-medium">
+                    Şifremi Unuttum
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-3 rounded-lg font-bold text-sm transition-colors flex items-center justify-center shadow-lg"
+              >
+                {loading ? <Loader2 className="mr-2" /> : null}
+                {isLogin ? 'Sisteme Giriş Yap' : 'Kayıt Ol ve Başla'}
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    function ExportManagementApp() {
+      const [user, setUser] = useState(null);
+      const [authChecking, setAuthChecking] = useState(isFirebaseConfigured);
+      const [isMigrating, setIsMigrating] = useState(false);
+
+      const [exporters, setExporters] = useState(() => isFirebaseConfigured ? [] : loadFromStorage(STORAGE_KEYS.EXPORTERS, []));
+      const [customers, setCustomers] = useState(() => isFirebaseConfigured ? [] : loadFromStorage(STORAGE_KEYS.CUSTOMERS, []));
+      const [transporters, setTransporters] = useState(() => isFirebaseConfigured ? [] : loadFromStorage(STORAGE_KEYS.TRANSPORTERS, []));
+      const [checklists, setChecklists] = useState(() => isFirebaseConfigured ? [] : loadFromStorage(STORAGE_KEYS.CHECKLISTS, []));
+      const [selectedExporterId, setSelectedExporterId] = useState(() => loadFromStorage(STORAGE_KEYS.SELECTED_EXP, null));
+      
+      const [activeTab, setActiveTab] = useState('customers');
+      const [isCreatingChecklist, setIsCreatingChecklist] = useState(false);
+      const [editingChecklist, setEditingChecklist] = useState(null);
+      const [printingChecklist, setPrintingChecklist] = useState(null);
+      const [printingExportSet, setPrintingExportSet] = useState(null);
+
+      const [exporterModalOpen, setExporterModalOpen] = useState(false);
+      const [editingExporter, setEditingExporter] = useState(null);
+
+      // Firebase Auth Dinleyicisi
+      useEffect(() => {
+        if (!isFirebaseConfigured || !auth) {
+          setAuthChecking(false);
+          return;
+        }
+        const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+          setUser(currentUser);
+          setAuthChecking(false);
+        });
+        return () => unsubscribe();
+      }, []);
+
+      // Firestore Gerçek Zamanlı Bulut Dinleyicileri
+      useEffect(() => {
+        if (!isFirebaseConfigured || !user || !db) return;
+
+        const unsubExp = getColRef('exporters').onSnapshot(snap => {
+          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setExporters(list);
+          if (!selectedExporterId && list.length > 0) {
+            setSelectedExporterId(list[0].id);
+          }
+        });
+
+        const unsubCust = getColRef('customers').onSnapshot(snap => {
+          setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+
+        const unsubTrans = getColRef('transporters').onSnapshot(snap => {
+          setTransporters(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+
+        const unsubChk = getColRef('checklists').onSnapshot(snap => {
+          setChecklists(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+
+        return () => {
+          unsubExp(); unsubCust(); unsubTrans(); unsubChk();
+        };
+      }, [user]);
+
+      // Eğer Firebase henüz ayarlanmadıysa yerel depolamaya kaydetmeye devam et
+      useEffect(() => { if (!isFirebaseConfigured) saveToStorage(STORAGE_KEYS.EXPORTERS, exporters); }, [exporters]);
+      useEffect(() => { if (!isFirebaseConfigured) saveToStorage(STORAGE_KEYS.CUSTOMERS, customers); }, [customers]);
+      useEffect(() => { if (!isFirebaseConfigured) saveToStorage(STORAGE_KEYS.TRANSPORTERS, transporters); }, [transporters]);
+      useEffect(() => { if (!isFirebaseConfigured) saveToStorage(STORAGE_KEYS.CHECKLISTS, checklists); }, [checklists]);
+      useEffect(() => { saveToStorage(STORAGE_KEYS.SELECTED_EXP, selectedExporterId); }, [selectedExporterId]);
+
+      const selectedExporter = useMemo(() => exporters.find(e => e.id === selectedExporterId), [exporters, selectedExporterId]);
+      const currentCustomers = useMemo(() => customers.filter(c => c.exporterId === selectedExporterId), [customers, selectedExporterId]);
+      const currentTransporters = useMemo(() => transporters.filter(t => t.exporterId === selectedExporterId), [transporters, selectedExporterId]);
+      const currentChecklists = useMemo(() => checklists.filter(c => c.exporterId === selectedExporterId), [checklists, selectedExporterId]);
+
+      // Yerel Tarayıcı Verilerini Tek Tıkla Buluta Aktarma Fonksiyonu
+      const handleMigrateLocalToCloud = async () => {
+        if (!isFirebaseConfigured || !db) return;
+        const localExp = loadFromStorage(STORAGE_KEYS.EXPORTERS, []);
+        const localCust = loadFromStorage(STORAGE_KEYS.CUSTOMERS, []);
+        const localTrans = loadFromStorage(STORAGE_KEYS.TRANSPORTERS, []);
+        const localChk = loadFromStorage(STORAGE_KEYS.CHECKLISTS, []);
+
+        if (localExp.length === 0 && localCust.length === 0 && localChk.length === 0) {
+          alert("Tarayıcı hafızasında aktarılacak yerel veri bulunamadı.");
+          return;
+        }
+
+        if (!window.confirm(`${localExp.length} İhracatçı, ${localCust.length} Müşteri, ${localTrans.length} Nakliyeci ve ${localChk.length} Evrak buluta aktarılacak. Onaylıyor musunuz?`)) return;
+
+        setIsMigrating(true);
+        try {
+          for (const item of localExp) {
+            const id = item.id || generateId();
+            await getColRef('exporters').doc(id).set({ ...item, id });
+          }
+          for (const item of localCust) {
+            const id = item.id || generateId();
+            await getColRef('customers').doc(id).set({ ...item, id });
+          }
+          for (const item of localTrans) {
+            const id = item.id || generateId();
+            await getColRef('transporters').doc(id).set({ ...item, id });
+          }
+          for (const item of localChk) {
+            const id = item.id || generateId();
+            await getColRef('checklists').doc(id).set({ ...item, id });
+          }
+          alert("Tüm yerel verileriniz başarıyla Firebase Bulut veritabanına aktarıldı!");
+        } catch (err) {
+          alert("Aktarım sırasında hata oluştu: " + err.message);
+        } finally {
+          setIsMigrating(false);
+        }
+      };
+
+      const handleSaveExporter = async (exporterData) => {
+        const id = exporterData.id || generateId();
+        const payload = { ...exporterData, id, createdAt: exporterData.createdAt || new Date().toISOString() };
+
+        if (isFirebaseConfigured && db) {
+          await getColRef('exporters').doc(id).set(payload);
+          if (!selectedExporterId) setSelectedExporterId(id);
+        } else {
+          if (exporterData.id) {
+            setExporters(exporters.map(e => e.id === exporterData.id ? payload : e));
+          } else {
+            setExporters([...exporters, payload]);
+            if (!selectedExporterId) setSelectedExporterId(id);
+          }
+        }
+        setExporterModalOpen(false);
+        setEditingExporter(null);
+      };
+
+      const handleDeleteExporter = async (id) => {
+        if (customers.some(c => c.exporterId === id) || transporters.some(t => t.exporterId === id) || checklists.some(ch => ch.exporterId === id)) {
+          alert("Bu İhracatçıya ait tanımlı Müşteri, Nakliyeci veya Çeklist/Evrak kaydı bulunmaktadır!");
+          return;
+        }
+        if (!window.confirm("Bu İhracatçı kartını silmek istediğinizden emin misiniz?")) return;
+        if (isFirebaseConfigured && db) {
+          await getColRef('exporters').doc(id).delete();
+        } else {
+          setExporters(exporters.filter(e => e.id !== id));
+        }
+        if (selectedExporterId === id) setSelectedExporterId(null);
+      };
+
+      const handleSaveChecklist = async (checklistData) => {
+        const id = editingChecklist?.id || generateId();
+        const payload = { ...checklistData, id };
+
+        if (isFirebaseConfigured && db) {
+          await getColRef('checklists').doc(id).set(payload);
+        } else {
+          if (editingChecklist) {
+            setChecklists(checklists.map(c => c.id === editingChecklist.id ? payload : c));
+          } else {
+            setChecklists([...checklists, payload]);
+          }
+        }
+        setIsCreatingChecklist(false);
+        setEditingChecklist(null);
+      };
+
+      if (authChecking) {
+        return (
+          <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-400 mr-3" />
+            <span className="font-bold">Bulut Bağlantısı Kontrol Ediliyor...</span>
+          </div>
+        );
+      }
+
+      if (isFirebaseConfigured && !user) {
+        return <AuthScreen />;
+      }
+
+      return (
+        <div className="flex h-screen bg-slate-100 font-sans overflow-hidden">
+          <div className="no-print h-full">
+            <Sidebar 
+              exporters={exporters} 
+              selectedId={selectedExporterId} 
+              onSelect={(id) => { setSelectedExporterId(id); setIsCreatingChecklist(false); setEditingChecklist(null); }}
+              onOpenAdd={() => { setEditingExporter(null); setExporterModalOpen(true); }}
+              onOpenEdit={(exp) => { setEditingExporter(exp); setExporterModalOpen(true); }}
+              onDelete={handleDeleteExporter}
+              user={user}
+              onMigrate={handleMigrateLocalToCloud}
+              isMigrating={isMigrating}
+            />
+          </div>
+
+          <div className={`flex-1 flex flex-col overflow-hidden ${(printingChecklist || printingExportSet) ? 'no-print' : ''}`}>
+            {!isFirebaseConfigured && (
+              <div className="no-print bg-amber-500 text-slate-950 px-4 py-1.5 text-xs font-bold flex items-center justify-between">
+                <span>⚠️ Şu an Yerel Modda çalışıyorsunuz. Bulut senkronizasyonu ve şifreli giriş için kodun içindeki FIREBASE_CONFIG alanına kendi Firebase anahtarlarınızı yapıştırın.</span>
+              </div>
+            )}
+            {selectedExporter ? (
+              (isCreatingChecklist || editingChecklist) ? (
+                <ChecklistForm 
+                  exporter={selectedExporter}
+                  customers={currentCustomers}
+                  transporters={currentTransporters}
+                  initialData={editingChecklist}
+                  onBack={() => { setIsCreatingChecklist(false); setEditingChecklist(null); }}
+                  onSaveChecklist={handleSaveChecklist}
+                />
+              ) : (
+                <div className="flex-1 flex flex-col h-full overflow-hidden">
+                  <header className="no-print bg-white border-b border-gray-200 px-6 py-4 shadow-sm z-10 flex justify-between items-center">
+                    <div>
+                      <h1 className="text-2xl font-bold text-slate-800 flex items-center">
+                        <Building2 className="w-6 h-6 mr-3 text-blue-600" />
+                        {selectedExporter.name} Yönetimi
+                      </h1>
+                      <div className="text-xs text-slate-500 mt-1 flex gap-4">
+                        <span><strong>VAT:</strong> {selectedExporter.vatNo || '-'}</span>
+                        <span><strong>DUNS:</strong> {selectedExporter.dunsNumber || '-'}</span>
+                        <span><strong>EORI:</strong> {selectedExporter.eoriNumber || '-'}</span>
+                        <span><strong>Yetkili:</strong> {selectedExporter.contactPerson || '-'} ({selectedExporter.email || '-'})</span>
+                      </div>
+                      
+                      <div className="flex mt-4 space-x-1 border-b border-gray-200">
+                        <TabButton active={activeTab === 'customers'} onClick={() => setActiveTab('customers')} icon={<Users />} label="Müşteriler" />
+                        <TabButton active={activeTab === 'transporters'} onClick={() => setActiveTab('transporters')} icon={<Truck />} label="Nakliyeciler" />
+                        <TabButton active={activeTab === 'checklists'} onClick={() => setActiveTab('checklists')} icon={<FileSpreadsheet />} label="Check List / Evrak" />
+                      </div>
+                    </div>
+
+                    <button type="button" onClick={() => { setEditingExporter(selectedExporter); setExporterModalOpen(true); }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center border">
+                      <Edit size={14} className="mr-1" /> İhracatçı Kartını Düzenle
+                    </button>
+                  </header>
+
+                  <main className="flex-1 overflow-auto p-6 bg-slate-50">
+                    {activeTab === 'customers' && (
+                      <CustomerManager 
+                        exporterId={selectedExporterId} 
+                        data={currentCustomers} 
+                        onSave={async (cust) => {
+                          const id = cust.id || generateId();
+                          const payload = { ...cust, id, exporterId: selectedExporterId };
+                          if (isFirebaseConfigured && db) {
+                            await getColRef('customers').doc(id).set(payload);
+                          } else {
+                            if (cust.id) setCustomers(customers.map(c => c.id === cust.id ? payload : c));
+                            else setCustomers([...customers, payload]);
+                          }
+                        }}
+                        onDelete={async (id) => {
+                          if (!window.confirm("Bu müşteriyi silmek istediğinizden emin misiniz?")) return;
+                          if (isFirebaseConfigured && db) await getColRef('customers').doc(id).delete();
+                          else setCustomers(customers.filter(c => c.id !== id));
+                        }}
+                      />
+                    )}
+                    {activeTab === 'transporters' && (
+                      <TransporterManager 
+                        exporterId={selectedExporterId} 
+                        data={currentTransporters} 
+                        onSave={async (trans) => {
+                          const id = trans.id || generateId();
+                          const payload = { ...trans, id, exporterId: selectedExporterId };
+                          if (isFirebaseConfigured && db) {
+                            await getColRef('transporters').doc(id).set(payload);
+                          } else {
+                            if (trans.id) setTransporters(transporters.map(t => t.id === trans.id ? payload : t));
+                            else setTransporters([...transporters, payload]);
+                          }
+                        }}
+                        onDelete={async (id) => {
+                          if (!window.confirm("Bu nakliyeciyi silmek istediğinizden emin misiniz?")) return;
+                          if (isFirebaseConfigured && db) await getColRef('transporters').doc(id).delete();
+                          else setTransporters(transporters.filter(t => t.id !== id));
+                        }}
+                      />
+                    )}
+                    {activeTab === 'checklists' && (
+                      <ChecklistManager 
+                        data={currentChecklists} 
+                        customers={currentCustomers}
+                        transporters={currentTransporters}
+                        onCreateNew={() => setIsCreatingChecklist(true)} 
+                        onEdit={(checklist) => setEditingChecklist(checklist)}
+                        onPrint={(checklist) => setPrintingChecklist(checklist)}
+                        onCreateExportSet={(checklist) => setPrintingExportSet(checklist)}
+                        onDelete={async (id) => {
+                          if (!window.confirm("Bu evrakı silmek istediğinizden emin misiniz?")) return;
+                          if (isFirebaseConfigured && db) await getColRef('checklists').doc(id).delete();
+                          else setChecklists(checklists.filter(c => c.id !== id));
+                        }}
+                      />
+                    )}
+                  </main>
+                </div>
+              )
+            ) : (
+              <div className="flex-1 flex items-center justify-center bg-slate-50 no-print">
+                <div className="text-center">
+                  <Building2 className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <h2 className="text-xl font-medium text-slate-600">İşlem yapmak için sol menüden bir ihracatçı seçin</h2>
+                  <p className="text-slate-400 mt-2">Veya yeni bir ihracatçı kartı oluşturun.</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {exporterModalOpen && <ExporterModal initialData={editingExporter} onClose={() => { setExporterModalOpen(false); setEditingExporter(null); }} onSave={handleSaveExporter} />}
+
+          {printingChecklist && <PrintModal checklist={printingChecklist} exporter={selectedExporter} customer={customers.find(c => c.id === printingChecklist.customerId)} transporter={transporters.find(t => t.id === printingChecklist.transporterId)} onClose={() => setPrintingChecklist(null)} />}
+          
+          {printingExportSet && <ExportSetPrintModal checklist={printingExportSet} exporter={selectedExporter} customer={customers.find(c => c.id === printingExportSet.customerId)} transporter={transporters.find(t => t.id === printingExportSet.transporterId)} onClose={() => setPrintingExportSet(null)} />}
+        </div>
+      );
+    }
+
+    function Sidebar({ exporters, selectedId, onSelect, onOpenAdd, onOpenEdit, onDelete, user, onMigrate, isMigrating }) {
+      return (
+        <div className="w-72 bg-slate-900 text-slate-300 flex flex-col shadow-xl z-20 h-full">
+          <div className="p-5 bg-slate-950 flex justify-between items-center">
+            <h2 className="text-xl font-bold text-white flex items-center">
+              <Building2 className="w-6 h-6 mr-2 text-blue-400" />
+              İhracatçılar
+            </h2>
+            {user && (
+              <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                <Cloud size={11} /> Bulut Aktif
+              </span>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto py-2">
+            {exporters.map(exp => (
+              <div key={exp.id} className={`w-full group flex items-center justify-between px-4 py-3 transition-colors cursor-pointer ${selectedId === exp.id ? 'bg-blue-600 text-white border-l-4 border-blue-400' : 'hover:bg-slate-800 border-l-4 border-transparent'}`} onClick={() => onSelect(exp.id)}>
+                <div className="flex items-center gap-2 truncate flex-1">
+                  {exp.logo && <img src={exp.logo} className="w-6 h-6 object-contain rounded bg-white p-0.5" />}
+                  <span className="font-medium truncate">{exp.name}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={(e) => { e.stopPropagation(); onOpenEdit(exp); }} className="opacity-0 group-hover:opacity-100 p-1 hover:text-blue-200 transition-opacity" title="Düzenle"><Edit size={14} /></button>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(exp.id); }} className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-300 transition-opacity" title="Sil"><Trash2 size={14} /></button>
+                  {selectedId === exp.id && <ChevronRight size={16} />}
+                </div>
+              </div>
+            ))}
+            {exporters.length === 0 && <div className="px-5 py-4 text-sm text-slate-500 italic">Henüz ihracatçı bulunmuyor.</div>}
+          </div>
+          <div className="p-4 bg-slate-800 border-t border-slate-700 space-y-2">
+            <button type="button" onClick={onOpenAdd} className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium text-sm transition-colors">
+              <Plus size={18} /> Yeni İhracatçı Kartı
+            </button>
+
+            {user && (
+              <>
+                <button
+                  type="button"
+                  disabled={isMigrating}
+                  onClick={onMigrate}
+                  className="w-full flex items-center justify-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-amber-300 py-2 rounded-lg font-semibold text-xs transition-colors border border-slate-600"
+                  title="Bu tarayıcıdaki eski verileri buluta kopyalar"
+                >
+                  <Upload size={14} /> {isMigrating ? 'Aktarılıyor...' : 'Yerel Verileri Buluta Aktar'}
+                </button>
+
+                <div className="pt-2 border-t border-slate-700 flex items-center justify-between text-xs">
+                  <span className="truncate text-slate-400 max-w-[165px]" title={user.email}>{user.email}</span>
+                  <button
+                    type="button"
+                    onClick={() => auth.signOut()}
+                    className="text-red-400 hover:text-red-300 font-bold flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-700"
+                  >
+                    <LogOut size={14} /> Çıkış
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function ExporterModal({ initialData, onClose, onSave }) {
+      const [name, setName] = useState(initialData?.name || '');
+      const [address, setAddress] = useState(initialData?.address || '');
+      const [phone, setPhone] = useState(initialData?.phone || '');
+      const [fax, setFax] = useState(initialData?.fax || '');
+      const [vatNo, setVatNo] = useState(initialData?.vatNo || '');
+      const [dunsNumber, setDunsNumber] = useState(initialData?.dunsNumber || '');
+      const [eoriNumber, setEoriNumber] = useState(initialData?.eoriNumber || '');
+      const [contactPerson, setContactPerson] = useState(initialData?.contactPerson || '');
+      const [email, setEmail] = useState(initialData?.email || '');
+      const [logo, setLogo] = useState(initialData?.logo || '');
+      const [stamp, setStamp] = useState(initialData?.stamp || '');
+
+      const [insurances, setInsurances] = useState(initialData?.insurances || []);
+      const [banks, setBanks] = useState(initialData?.banks || []);
+
+      const handleLogoChange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const compressed = await compressImage(file);
+          setLogo(compressed);
+        }
+      };
+
+      const handleStampChange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const compressed = await compressImage(file);
+          setStamp(compressed);
+        }
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        onSave({ 
+          id: initialData?.id, name: name.trim(), address: address.trim(), phone: phone.trim(), fax: fax.trim(), 
+          vatNo: vatNo.trim(), dunsNumber: dunsNumber.trim(), eoriNumber: eoriNumber.trim(), contactPerson: contactPerson.trim(), 
+          email: email.trim(), logo, stamp,
+          insurances, banks
+        });
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-4 overflow-y-auto pt-10 pb-10">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full p-6 relative">
+            <div className="flex justify-between items-center border-b pb-3 mb-4 sticky top-0 bg-white z-10">
+              <h3 className="text-lg font-bold text-slate-800">{initialData ? 'İhracatçı Kartını Düzenle' : 'Yeni İhracatçı Kartı Ekle'}</h3>
+              <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              
+              {/* Firma Genel Bilgileri */}
+              <div>
+                <h4 className="text-sm font-bold text-blue-800 mb-3 border-b pb-1">FİRMA GENEL BİLGİLERİ</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">UNVAN / FİRMA ADI *</label>
+                    <input type="text" required className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={name} onChange={e => setName(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">ADRES</label>
+                    <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={address} onChange={e => setAddress(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">TELEFON</label>
+                    <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={phone} onChange={e => setPhone(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">FAX</label>
+                    <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={fax} onChange={e => setFax(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">VAT ID (Vergi No)</label>
+                    <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={vatNo} onChange={e => setVatNo(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">DUNS NUMBER</label>
+                    <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={dunsNumber} onChange={e => setDunsNumber(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">EORI NUMBER</label>
+                    <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={eoriNumber} onChange={e => setEoriNumber(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">YETKİLİ KİŞİ</label>
+                    <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">MAIL ADRESİ</label>
+                    <input type="email" className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} />
+                  </div>
+                  
+                  <div className="md:col-span-1">
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">FİRMA LOGOSU</label>
+                    <input type="file" accept="image/*" onChange={handleLogoChange} className="text-xs text-slate-500" />
+                    {logo && (
+                      <div className="relative border p-1 rounded bg-white mt-2 inline-block">
+                        <img src={logo} alt="Logo" className="h-10 object-contain" />
+                        <button type="button" onClick={() => setLogo('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><X size={12} /></button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="md:col-span-1">
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">KAŞE / İMZA GÖRSELİ</label>
+                    <input type="file" accept="image/*" onChange={handleStampChange} className="text-xs text-slate-500" />
+                    {stamp && (
+                      <div className="relative border p-1 rounded bg-white mt-2 inline-block">
+                        <img src={stamp} alt="Stamp" className="h-10 object-contain" />
+                        <button type="button" onClick={() => setStamp('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><X size={12} /></button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sigorta Acenteleri */}
+              <div>
+                <div className="flex justify-between items-center mb-3 border-b pb-1">
+                  <h4 className="text-sm font-bold text-blue-800">SİGORTA ŞİRKETİ / ACENTE BİLGİLERİ</h4>
+                  <button type="button" onClick={() => setInsurances([...insurances, { id: generateId(), agencyName: '', phone: '', email: '', address: '' }])} className="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded flex items-center font-bold">
+                    <Plus size={14} className="mr-1" /> Yeni Acente Ekle
+                  </button>
+                </div>
+                
+                {insurances.length === 0 && <div className="text-sm text-slate-500 italic">Sigorta acentesi eklenmemiş.</div>}
+                
+                {insurances.map((ins) => (
+                  <div key={ins.id} className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3 bg-slate-50 p-3 rounded border relative">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">ACENTA ADI</label>
+                      <input type="text" value={ins.agencyName} onChange={e => setInsurances(insurances.map(item => item.id === ins.id ? { ...item, agencyName: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">TELEFON</label>
+                      <input type="text" value={ins.phone} onChange={e => setInsurances(insurances.map(item => item.id === ins.id ? { ...item, phone: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">MAIL ADRESİ</label>
+                      <input type="text" value={ins.email} onChange={e => setInsurances(insurances.map(item => item.id === ins.id ? { ...item, email: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">ADRES</label>
+                      <input type="text" value={ins.address} onChange={e => setInsurances(insurances.map(item => item.id === ins.id ? { ...item, address: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" />
+                    </div>
+                    <button type="button" onClick={() => setInsurances(insurances.filter(item => item.id !== ins.id))} className="absolute top-2 right-2 text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Banka Hesapları */}
+              <div>
+                <div className="flex justify-between items-center mb-3 border-b pb-1">
+                  <h4 className="text-sm font-bold text-blue-800">BANKA HESAPLARI</h4>
+                  <button type="button" onClick={() => setBanks([...banks, { id: generateId(), currency: 'EUR', bankName: '', swift: '', iban: '' }])} className="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded flex items-center font-bold">
+                    <Plus size={14} className="mr-1" /> Yeni Banka Ekle
+                  </button>
+                </div>
+                
+                {banks.length === 0 && <div className="text-sm text-slate-500 italic">Banka hesabı eklenmemiş.</div>}
+                
+                {banks.map((b) => (
+                  <div key={b.id} className="flex gap-2 mb-3 items-center flex-wrap md:flex-nowrap bg-slate-50 p-2 rounded border">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">DÖVİZ</label>
+                      <select value={b.currency} onChange={e => setBanks(banks.map(item => item.id === b.id ? { ...item, currency: e.target.value } : item))} className="px-2 py-1.5 border rounded text-sm w-20 outline-none">
+                        <option value="EUR">EUR</option><option value="USD">USD</option><option value="TRY">TRY</option><option value="GBP">GBP</option>
+                      </select>
+                    </div>
+                    <div className="flex-1 min-w-[120px]">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">BANKA ADI</label>
+                      <input type="text" value={b.bankName} onChange={e => setBanks(banks.map(item => item.id === b.id ? { ...item, bankName: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" placeholder="Banka Adı" />
+                    </div>
+                    <div className="w-32">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">SWIFT</label>
+                      <input type="text" value={b.swift} onChange={e => setBanks(banks.map(item => item.id === b.id ? { ...item, swift: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" placeholder="SWIFT Kodu" />
+                    </div>
+                    <div className="flex-[2] min-w-[200px]">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">HESAP NO / IBAN</label>
+                      <input type="text" value={b.iban} onChange={e => setBanks(banks.map(item => item.id === b.id ? { ...item, iban: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" placeholder="TR..." />
+                    </div>
+                    <div className="pt-4">
+                      <button type="button" onClick={() => setBanks(banks.filter(item => item.id !== b.id))} className="text-red-500 p-2 hover:bg-red-50 rounded"><Trash2 size={18} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-2 border-t pt-4 sticky bottom-0 bg-white z-10 pb-2">
+                <button type="button" onClick={onClose} className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-medium">İptal</button>
+                <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold flex items-center"><Save size={16} className="mr-1.5" /> Kaydet</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+    function TabButton({ active, onClick, icon, label }) {
+      return (
+        <button type="button" onClick={onClick} className={`flex items-center px-6 py-3 font-medium text-sm transition-colors border-b-2 ${active ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
+          <span className="mr-2">{icon}</span>{label}
+        </button>
+      );
+    }
+
+    function CustomerManager({ exporterId, data, onSave, onDelete }) {
+      const [editingId, setEditingId] = useState(null);
+      const [name, setName] = useState('');
+      const [address, setAddress] = useState('');
+      const [country, setCountry] = useState('');
+      const [vatNo, setVatNo] = useState('');
+      const [htsNo, setHtsNo] = useState('');
+      const [logo, setLogo] = useState('');
+      const [contacts, setContacts] = useState([{ id: generateId(), name: '', email: '' }]);
+
+      const resetForm = () => {
+        setEditingId(null);
+        setName(''); setAddress(''); setCountry(''); setVatNo(''); setHtsNo(''); setLogo('');
+        setContacts([{ id: generateId(), name: '', email: '' }]);
+      };
+
+      const startEdit = (item) => {
+        setEditingId(item.id);
+        setName(item.name || ''); setAddress(item.address || ''); setCountry(item.country || '');
+        setVatNo(item.vatNo || ''); setHtsNo(item.htsNo || ''); setLogo(item.logo || '');
+        setContacts(item.contacts && item.contacts.length > 0 ? item.contacts : [{ id: generateId(), name: '', email: '' }]);
+      };
+
+      const handleLogoChange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const compressed = await compressImage(file);
+          setLogo(compressed);
+        }
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        onSave({ id: editingId, exporterId, name: name.trim(), address: address.trim(), country: country.trim(), vatNo: vatNo.trim(), htsNo: htsNo.trim(), logo, contacts: contacts.filter(c => c.name.trim() || c.email.trim()) });
+        resetForm();
+      };
+
+      return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="p-5 border-b border-slate-200 bg-slate-50/50">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+              <Users className="w-5 h-5 mr-2 text-blue-500" /> {editingId ? 'Müşteri Kartını Düzenle' : 'Yeni Müşteri Ekle'}
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">FİRMA ADI *</label>
+                  <input type="text" required className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={name} onChange={e => setName(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">ÜLKE</label>
+                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={country} onChange={e => setCountry(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">VAT NO</label>
+                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={vatNo} onChange={e => setVatNo(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">HTS NO</label>
+                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={htsNo} onChange={e => setHtsNo(e.target.value)} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">ADRES</label>
+                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={address} onChange={e => setAddress(e.target.value)} />
+                </div>
+              </div>
+              <div className="flex items-center gap-4 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">FİRMA LOGO</label>
+                  <input type="file" accept="image/*" onChange={handleLogoChange} className="text-xs text-slate-500" />
+                </div>
+                {logo && (
+                  <div className="relative border p-1 rounded bg-white">
+                    <img src={logo} alt="Müşteri Logo" className="h-10 object-contain" />
+                    <button type="button" onClick={() => setLogo('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><X size={12} /></button>
+                  </div>
+                )}
+              </div>
+              <div className="border-t pt-3">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs font-bold text-slate-700">YETKİLİ KİŞİLER</label>
+                  <button type="button" onClick={() => setContacts([...contacts, { id: generateId(), name: '', email: '' }])} className="text-xs bg-slate-200 text-slate-700 px-2 py-1 rounded flex items-center"><Plus size={14} className="mr-1" /> Ekle</button>
+                </div>
+                {contacts.map((c) => (
+                  <div key={c.id} className="flex gap-2 mb-2 items-center">
+                    <input type="text" placeholder="Ad Soyad" className="flex-1 px-3 py-1.5 border rounded text-sm" value={c.name} onChange={e => setContacts(contacts.map(item => item.id === c.id ? { ...item, name: e.target.value } : item))} />
+                    <input type="email" placeholder="Mail" className="flex-1 px-3 py-1.5 border rounded text-sm" value={c.email} onChange={e => setContacts(contacts.map(item => item.id === c.id ? { ...item, email: e.target.value } : item))} />
+                    {contacts.length > 1 && <button type="button" onClick={() => setContacts(contacts.filter(item => item.id !== c.id))} className="text-red-500 p-1"><Trash2 size={16} /></button>}
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end gap-2">
+                {editingId && <button type="button" onClick={resetForm} className="bg-slate-200 px-4 py-2 rounded-lg text-sm">İptal</button>}
+                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold"><Save size={16} className="inline mr-1" /> {editingId ? 'Güncelle' : 'Kaydet'}</button>
+              </div>
+            </form>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-600 text-sm">
+                  <th className="p-3 font-semibold">Logo</th>
+                  <th className="p-3 font-semibold">Firma Adı</th>
+                  <th className="p-3 font-semibold">Ülke / VAT</th>
+                  <th className="p-3 font-semibold">Yetkililer</th>
+                  <th className="p-3 font-semibold w-24 text-center">İşlem</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-sm">
+                {data.length > 0 ? data.map(item => (
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="p-3">{item.logo ? <img src={item.logo} className="h-8 w-12 object-contain rounded border" /> : <span className="text-slate-400 text-xs">-</span>}</td>
+                    <td className="p-3 font-medium text-slate-800">{item.name}<div className="text-xs text-slate-500">{item.address}</div></td>
+                    <td className="p-3 text-slate-600">{item.country || '-'} / VAT: {item.vatNo || '-'}</td>
+                    <td className="p-3 text-xs text-slate-600">{item.contacts?.map((c, i) => <div key={i}>{c.name} ({c.email})</div>)}</td>
+                    <td className="p-3 text-center">
+                      <button type="button" onClick={() => startEdit(item)} className="text-blue-600 p-1"><Edit size={16} /></button>
+                      <button type="button" onClick={() => onDelete(item.id)} className="text-red-500 p-1"><Trash2 size={16} /></button>
+                    </td>
+                  </tr>
+                )) : <tr><td colSpan={5} className="p-8 text-center text-slate-500">Müşteri kaydı bulunmuyor.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function TransporterManager({ exporterId, data, onSave, onDelete }) {
+      const [editingId, setEditingId] = useState(null);
+      const [name, setName] = useState('');
+      const [address, setAddress] = useState('');
+      const [vatNo, setVatNo] = useState('');
+      const [email, setEmail] = useState('');
+      const [deliveryTerm, setDeliveryTerm] = useState('FOB');
+      const [transportType, setTransportType] = useState('Karayolu');
+      const [logo, setLogo] = useState('');
+
+      const resetForm = () => {
+        setEditingId(null);
+        setName(''); setAddress(''); setVatNo(''); setEmail(''); setDeliveryTerm('FOB'); setTransportType('Karayolu'); setLogo('');
+      };
+
+      const startEdit = (item) => {
+        setEditingId(item.id);
+        setName(item.name || ''); setAddress(item.address || ''); setVatNo(item.vatNo || ''); setEmail(item.email || ''); setDeliveryTerm(item.deliveryTerm || 'FOB'); setTransportType(item.transportType || 'Karayolu'); setLogo(item.logo || '');
+      };
+
+      const handleLogoChange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const compressed = await compressImage(file);
+          setLogo(compressed);
+        }
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        onSave({ id: editingId, exporterId, name: name.trim(), address: address.trim(), vatNo: vatNo.trim(), email: email.trim(), deliveryTerm, transportType, logo });
+        resetForm();
+      };
+
+      return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="p-5 border-b border-slate-200 bg-slate-50/50">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+              <Truck className="w-5 h-5 mr-2 text-blue-500" /> {editingId ? 'Nakliyeci Kartını Düzenle' : 'Yeni Nakliyeci Ekle'}
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">FİRMA ADI *</label>
+                  <input type="text" required className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={name} onChange={e => setName(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">VERGİ NO (V.NO)</label>
+                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={vatNo} onChange={e => setVatNo(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">E-MAİL ADRESİ</label>
+                  <input type="email" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={email} onChange={e => setEmail(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">TESLİM ŞEKLİ</label>
+                  <select className="w-full px-3 py-2 border rounded-lg text-sm outline-none bg-white" value={deliveryTerm} onChange={e => setDeliveryTerm(e.target.value)}>
+                    <option value="FOB">FOB</option><option value="EXW">EXW</option><option value="CIF">CIF</option><option value="DAP">DAP</option><option value="DDP">DDP</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">TAŞIMACILIK TÜRÜ</label>
+                  <select className="w-full px-3 py-2 border rounded-lg text-sm outline-none bg-white" value={transportType} onChange={e => setTransportType(e.target.value)}>
+                    <option value="Karayolu">Karayolu</option><option value="Denizyolu">Denizyolu</option><option value="Havayolu">Havayolu</option><option value="Demiryolu">Demiryolu</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">ADRES</label>
+                  <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" value={address} onChange={e => setAddress(e.target.value)} />
+                </div>
+              </div>
+              <div className="flex items-center gap-4 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">NAKLİYECİ LOGO</label>
+                  <input type="file" accept="image/*" onChange={handleLogoChange} className="text-xs text-slate-500" />
+                </div>
+                {logo && (
+                  <div className="relative border p-1 rounded bg-white">
+                    <img src={logo} alt="Nakliyeci Logo" className="h-10 object-contain" />
+                    <button type="button" onClick={() => setLogo('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><X size={12} /></button>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                {editingId && <button type="button" onClick={resetForm} className="bg-slate-200 px-4 py-2 rounded-lg text-sm">İptal</button>}
+                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold"><Save size={16} className="inline mr-1" /> {editingId ? 'Güncelle' : 'Kaydet'}</button>
+              </div>
+            </form>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-600 text-sm">
+                  <th className="p-3 font-semibold">Logo</th>
+                  <th className="p-3 font-semibold">Nakliyeci Adı</th>
+                  <th className="p-3 font-semibold">İletişim / Mail</th>
+                  <th className="p-3 font-semibold">Teslim Şekli</th>
+                  <th className="p-3 font-semibold">Taşımacılık</th>
+                  <th className="p-3 font-semibold w-24 text-center">İşlem</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-sm">
+                {data.length > 0 ? data.map(item => (
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="p-3">{item.logo ? <img src={item.logo} className="h-8 w-12 object-contain rounded border" /> : <span className="text-slate-400 text-xs">-</span>}</td>
+                    <td className="p-3 font-medium text-slate-800">{item.name}<div className="text-xs text-slate-500">{item.address}</div></td>
+                    <td className="p-3 text-slate-600">{item.email || '-'} / V.NO: {item.vatNo || '-'}</td>
+                    <td className="p-3 text-slate-600"><span className="bg-slate-100 border px-2 py-0.5 rounded text-xs font-bold">{item.deliveryTerm}</span></td>
+                    <td className="p-3 text-slate-600">{item.transportType}</td>
+                    <td className="p-3 text-center">
+                      <button type="button" onClick={() => startEdit(item)} className="text-blue-600 p-1" title="Düzenle"><Edit size={16} /></button>
+                      <button type="button" onClick={() => onDelete(item.id)} className="text-red-500 p-1" title="Sil"><Trash2 size={16} /></button>
+                    </td>
+                  </tr>
+                )) : <tr><td colSpan={6} className="p-8 text-center text-slate-500">Nakliyeci kaydı bulunmuyor.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function ChecklistManager({ data, customers, transporters, onCreateNew, onEdit, onPrint, onCreateExportSet, onDelete }) {
+      const getCustomerName = (id) => customers.find(c => c.id === id)?.name || 'Bilinmiyor';
+      const getTransporterName = (id) => transporters.find(t => t.id === id)?.name || '-';
+
+      return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+          <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-slate-800 flex items-center"><FileSpreadsheet className="w-5 h-5 mr-2 text-blue-500" /> Kayıtlı Evraklar / Check Listler</h3>
+            <button type="button" onClick={onCreateNew} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-medium flex items-center shadow-sm text-sm"><FileText size={18} className="mr-2" /> Yeni Evrak/Check List Oluştur</button>
+          </div>
+          <div className="overflow-auto flex-1">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-600 text-sm sticky top-0 shadow-sm">
+                  <th className="p-4 font-semibold">Fatura No / Tarih</th>
+                  <th className="p-4 font-semibold">Müşteri</th>
+                  <th className="p-4 font-semibold">Nakliyeci</th>
+                  <th className="p-4 font-semibold">Döviz</th>
+                  <th className="p-4 font-semibold">Kalem</th>
+                  <th className="p-4 font-semibold w-64 text-center">İşlem</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-sm">
+                {data.length > 0 ? data.map(item => (
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="p-4 font-bold text-blue-600">
+                      {item.invoiceNumber}
+                      <div className="text-xs text-slate-400 font-normal">{item.checklistDate || new Date(item.createdAt).toLocaleDateString('tr-TR')}</div>
+                    </td>
+                    <td className="p-4 text-slate-700">{getCustomerName(item.customerId)}</td>
+                    <td className="p-4 text-slate-700">{getTransporterName(item.transporterId)}</td>
+                    <td className="p-4 text-slate-700 font-bold">{item.currency || 'EUR'}</td>
+                    <td className="p-4 text-slate-600"><span className="bg-slate-200 text-slate-700 py-1 px-3 rounded-full text-xs font-semibold">{item.items?.length || 0} Kalem</span></td>
+                    <td className="p-4 text-center">
+                      <div className="flex justify-center items-center gap-2">
+                        <button type="button" onClick={() => onCreateExportSet(item)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-xs font-bold flex items-center shadow-sm" title="İhracat Seti Oluştur"><Layers size={14} className="mr-1" /> İhracat Seti</button>
+                        <button type="button" onClick={() => onPrint(item)} className="text-emerald-600 p-1 flex items-center" title="Sadece Packing List"><Printer size={18} /></button>
+                        <button type="button" onClick={() => onEdit(item)} className="text-blue-600 p-1 flex items-center" title="Düzenle"><Edit size={18} /></button>
+                        <button type="button" onClick={() => onDelete(item.id)} className="text-red-500 p-1 flex items-center" title="Sil"><Trash2 size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                )) : <tr><td colSpan={6} className="p-12 text-center text-slate-500 text-lg">Bu ihracatçıya ait evrak/checklist bulunamadı.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function ChecklistForm({ exporter, customers, transporters, initialData, onBack, onSaveChecklist }) {
+      const [invoiceNumber, setInvoiceNumber] = useState(initialData?.invoiceNumber || '');
+      const [checklistDate, setChecklistDate] = useState(initialData?.checklistDate || new Date().toISOString().split('T')[0]);
+      const [deliveryDate, setDeliveryDate] = useState(initialData?.deliveryDate || '');
+      const [customerId, setCustomerId] = useState(initialData?.customerId || '');
+      const [transporterId, setTransporterId] = useState(initialData?.transporterId || '');
+      const [currency, setCurrency] = useState(initialData?.currency || 'EUR');
+      const [deliveryAddress, setDeliveryAddress] = useState(initialData?.deliveryAddress || '');
+      const [selectedBankId, setSelectedBankId] = useState(initialData?.selectedBankId || '');
+      const [selectedInsuranceId, setSelectedInsuranceId] = useState(initialData?.selectedInsuranceId || '');
+      const [hasDownPayment, setHasDownPayment] = useState(initialData?.hasDownPayment || false);
+      const [downPaymentRate, setDownPaymentRate] = useState(initialData?.downPaymentRate ?? 30);
+      const [isFreeOfCharge, setIsFreeOfCharge] = useState(initialData?.isFreeOfCharge || false);
+      const [items, setItems] = useState(initialData?.items || []);
+      const [isExcelLoading, setIsExcelLoading] = useState(false);
+
+      const [currentPage, setCurrentPage] = useState(1);
+      const [pageSize, setPageSize] = useState(50);
+
+      const [selectedIds, setSelectedIds] = useState([]);
+      const [groupPalletNo, setGroupPalletNo] = useState('');
+      const [groupPalletEbat, setGroupPalletEbat] = useState('');
+      const [groupBrutKg, setGroupBrutKg] = useState('');
+
+      const processedRows = useMemo(() => processTableRows(items), [items]);
+      const totals = useMemo(() => calculateTotals(items, processedRows), [items, processedRows]);
+
+      const paginatedRows = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return processedRows.slice(start, start + pageSize);
+      }, [processedRows, currentPage, pageSize]);
+
+      const totalPages = Math.ceil(processedRows.length / pageSize) || 1;
+
+      const columns = [
+        { key: 'siraNo', label: 'Sıra No', width: 'w-16' },
+        { key: 'adsIsNo', label: 'ADS İş No', width: 'w-24' },
+        { key: 'parcaAdi', label: 'Parça Adı', width: 'w-48' },
+        { key: 'sipRefNo', label: 'Sip Ref No', width: 'w-28' },
+        { key: 'posNo', label: 'Pos No', width: 'w-20' },
+        { key: 'resimNo', label: 'Resim No', width: 'w-32' },
+        { key: 'fiyat', label: 'Fiyat', width: 'w-24' },
+        { key: 'adet', label: 'Adet', width: 'w-20' },
+        { key: 'tutar', label: 'Tutar', width: 'w-28' },
+        { key: 'netKg', label: 'Net KG', width: 'w-24' },
+        { key: 'brutKg', label: 'Brüt KG', width: 'w-24' },
+        { key: 'paletNo', label: 'Palet No', width: 'w-24' },
+        { key: 'paletEbatlari', label: 'Palet Ebatları', width: 'w-32' },
+      ];
+
+      const handleDownloadTemplate = () => {
+        if (!window.XLSX) {
+          alert("XLSX modülü henüz yüklenmedi.");
+          return;
+        }
+
+        const sampleData = [
+          ["SIRA NO", "ADS İŞ NO", "PARÇA ADI", "SİP.REF NO", "POS", "RESİM NO", "FİYAT", "ADET", "TUTAR", "NET KG", "BRÜT KG", "PALET NO", "PALET EBATLARI"],
+          [1, "26/0147-2", "Bowl Cover", "4500285283-20", 20, "D 2903.184.00 -", 4091.22, 2, 8182.44, 532, 560, "1/24", "80x160x50"],
+          [2, "26/0147-2", "Bowl Cover", "4500285283-20", 20, "D 2903.184.00 -", 4091.22, 2, 8182.44, 532, 560, "2/24", "80x160x50"]
+        ];
+
+        const ws = window.XLSX.utils.aoa_to_sheet(sampleData);
+        ws['!cols'] = Array(13).fill({ wch: 15 });
+
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, "Ceklist_Sablonu");
+        window.XLSX.writeFile(wb, "Ornek_Ceklist_Sablonu.xlsx");
+      };
+
+      const handleFileUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!window.XLSX) {
+          alert("XLSX okuma kütüphanesi hazır değil. Sayfayı yenileyip tekrar deneyin.");
+          return;
+        }
+
+        const inputEl = e.target;
+        setIsExcelLoading(true);
+
+        setTimeout(() => {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const dataBuffer = new Uint8Array(evt.target.result);
+              const wb = window.XLSX.read(dataBuffer, { 
+                type: 'array', 
+                cellFormula: false, 
+                cellHTML: false, 
+                cellText: true 
+              });
+
+              if (!wb.SheetNames || wb.SheetNames.length === 0) {
+                alert("Excel dosyasında çalışma sayfası bulunamadı.");
+                setIsExcelLoading(false);
+                if (inputEl) inputEl.value = "";
+                return;
+              }
+
+              const wsname = wb.SheetNames[0];
+              const ws = wb.Sheets[wsname];
+
+              if (!ws || !ws['!ref']) {
+                alert("Seçilen çalışma sayfası boş.");
+                setIsExcelLoading(false);
+                if (inputEl) inputEl.value = "";
+                return;
+              }
+
+              const range = window.XLSX.utils.decode_range(ws['!ref']);
+              if (range.e.r > 5000) range.e.r = 5000;
+
+              const rawData = window.XLSX.utils.sheet_to_json(ws, { 
+                header: 1, 
+                blankrows: false,
+                range: range 
+              });
+
+              if (!rawData || !Array.isArray(rawData) || rawData.length === 0) {
+                alert("Excel dosyasında okunabilir veri bulunamadı.");
+                setIsExcelLoading(false);
+                if (inputEl) inputEl.value = "";
+                return;
+              }
+
+              const normalizeText = (str) => {
+                return String(str || '')
+                  .replace(/İ/g, 'i')
+                  .replace(/I/g, 'ı')
+                  .replace(/i̇/g, 'i')
+                  .toLowerCase()
+                  .trim();
+              };
+
+              const parseTurkishNumber = (val) => {
+                if (val === null || val === undefined || val === '') return '';
+                if (typeof val === 'number') return isNaN(val) ? '' : val;
+                let str = String(val).replace(/\s/g, '').trim();
+                if (str.includes(',') && str.includes('.')) {
+                  str = str.replace(/\./g, '').replace(',', '.');
+                } else if (str.includes(',')) {
+                  str = str.replace(',', '.');
+                }
+                const num = parseFloat(str);
+                return isNaN(num) ? String(val).trim() : num;
+              };
+
+              let headerRowIndex = -1;
+              const colMap = {};
+
+              const keywords = {
+                siraNo: ['sıra no', 'sira no', 's.no', 'sno', 'item no', 'sıra', 'sira'],
+                adsIsNo: ['ads iş no', 'ads is no', 'anadolu work no', 'work no', 'iş no', 'is no'],
+                parcaAdi: ['parça adı', 'parca adi', 'part name', 'description', 'açıklama', 'aciklama', 'malzeme', 'ürün'],
+                sipRefNo: ['sip.ref no', 'sip ref no', 'order ref. no', 'order ref', 'po no', 'sip ref'],
+                posNo: ['pos no', 'pos', 'poz'],
+                resimNo: ['resim no', 'drawing no', 'çizim no', 'resim'],
+                modelNo: ['model no', 'pattern no', 'model'],
+                fiyat: ['fiyat', 'price', 'unit price', 'birim fiyat'],
+                adet: ['adet', 'qty', 'quantity', 'miktar', 'pcs'],
+                tutar: ['tutar', 'amount', 'toplam tutar'],
+                dokumKg: ['döküm kg', 'dokum kg', 'casting weight'],
+                netKg: ['net kg', 'net weight', 'net'],
+                brutKg: ['brüt kg', 'gross weight', 'brut kg', 'brüt', 'brut'],
+                sarjNo: ['şarj no', 'sarj no', 'heat no', 'charge no'],
+                paletNo: ['palet no', 'pallet no', 'koli no', 'palet'],
+                paletEbatlari: ['palet ebatları', 'palet ebatlari', 'pallet dimensions', 'ebat', 'dimension', 'ölçü']
+              };
+
+              for (let r = 0; r < Math.min(30, rawData.length); r++) {
+                const row = rawData[r];
+                if (!row || !Array.isArray(row)) continue;
+
+                let matchCount = 0;
+                const tempMap = {};
+
+                row.forEach((cellVal, colIdx) => {
+                  const text = normalizeText(cellVal);
+                  if (!text) return;
+
+                  for (const [key, wordList] of Object.entries(keywords)) {
+                    if (tempMap[key] === undefined) {
+                      if (wordList.some(w => text === w) || wordList.some(w => w.length > 2 && text.includes(w))) {
+                        tempMap[key] = colIdx;
+                        matchCount++;
+                        break;
+                      }
+                    }
+                  }
+                });
+
+                if (matchCount >= 2) {
+                  headerRowIndex = r;
+                  Object.assign(colMap, tempMap);
+                  break;
+                }
+              }
+
+              const defaultIndices = {
+                siraNo: 0, adsIsNo: 1, parcaAdi: 2, sipRefNo: 3, posNo: 4, resimNo: 5,
+                fiyat: 6, adet: 7, tutar: 8, netKg: 9, brutKg: 10, paletNo: 11, paletEbatlari: 12
+              };
+
+              Object.keys(defaultIndices).forEach(key => {
+                if (colMap[key] === undefined) {
+                  colMap[key] = defaultIndices[key];
+                }
+              });
+
+              const startRow = headerRowIndex !== -1 ? headerRowIndex + 1 : 0;
+              const newItems = [];
+
+              const isHeaderSubrow = (str) => {
+                const s = normalizeText(str);
+                if (!s) return false;
+                return (
+                  s === 'part name' || s === 'parça adı' || s === 'parca adi' || 
+                  s === 'description' || s === 'item no' || s === 'anadolu work no' || 
+                  s === 'order ref. no' || s === 'drawing no' || s === 'pattern no' || 
+                  s === 'qty' || s === 'quantity' || s === 'casting weight' || 
+                  s === 'net weight' || s === 'gross weight' || s === 'heat no' || 
+                  s === 'pallet no' || s === 'pallet dimensions' ||
+                  s.startsWith('(part name') || s.startsWith('(item no') || s.startsWith('(order ref')
+                );
+              };
+
+              let lastPalletNo = '';
+              let lastPalletEbatlari = '';
+              let lastBrutKg = '';
+
+              for (let i = startRow; i < rawData.length; i++) {
+                const row = rawData[i];
+                if (!row || !Array.isArray(row) || row.length === 0) continue;
+
+                const safeGet = (key) => {
+                  const idx = colMap[key];
+                  if (idx === undefined || idx < 0 || idx >= row.length) return '';
+                  const val = row[idx];
+                  return (val === null || val === undefined) ? '' : String(val).trim();
+                };
+
+                const siraNoRaw = safeGet('siraNo');
+                const parcaAdi = safeGet('parcaAdi');
+                const fiyatVal = safeGet('fiyat');
+
+                const c0 = siraNoRaw.toUpperCase();
+                const cFiyat = fiyatVal.toUpperCase();
+
+                if (
+                  c0.includes('TOPLAM') || c0.includes('TOTAL') || 
+                  cFiyat.includes('TOPLAM') || cFiyat.includes('TOTAL') || 
+                  c0.includes('YALNIZ') || c0.includes('ONLY') || 
+                  c0.includes('ISTIFLENEMEZ')
+                ) {
+                  break;
+                }
+
+                if (isHeaderSubrow(parcaAdi) || isHeaderSubrow(siraNoRaw)) {
+                  continue;
+                }
+
+                const adetVal = safeGet('adet');
+                const posNo = safeGet('posNo');
+
+                if (!parcaAdi && !adetVal && !posNo && !siraNoRaw) continue;
+
+                let pNo = safeGet('paletNo');
+                let pEbat = safeGet('paletEbatlari');
+                let bKg = safeGet('brutKg');
+
+                if (pNo !== '') {
+                  lastPalletNo = pNo;
+                  lastPalletEbatlari = pEbat;
+                  lastBrutKg = bKg;
+                } else if (lastPalletNo !== '' && pEbat !== '') {
+                  pNo = lastPalletNo;
+                  if (!pEbat) pEbat = lastPalletEbatlari;
+                  if (!bKg) bKg = lastBrutKg;
+                }
+
+                const parsedAdet = parseTurkishNumber(adetVal);
+                const parsedFiyat = parseTurkishNumber(fiyatVal);
+                const rawTutar = safeGet('tutar');
+                let parsedTutar = parseTurkishNumber(rawTutar);
+                if (!parsedTutar && typeof parsedAdet === 'number' && typeof parsedFiyat === 'number') {
+                  parsedTutar = (parsedAdet * parsedFiyat).toFixed(2);
+                }
+
+                newItems.push({
+                  id: generateId(),
+                  siraNo: siraNoRaw || String(newItems.length + 1),
+                  adsIsNo: safeGet('adsIsNo'),
+                  parcaAdi: parcaAdi,
+                  sipRefNo: safeGet('sipRefNo'),
+                  posNo: safeGet('posNo'),
+                  resimNo: safeGet('resimNo'),
+                  modelNo: safeGet('modelNo'),
+                  fiyat: parsedFiyat,
+                  adet: parsedAdet,
+                  tutar: parsedTutar,
+                  dokumKg: parseTurkishNumber(safeGet('dokumKg')),
+                  netKg: parseTurkishNumber(safeGet('netKg')),
+                  brutKg: parseTurkishNumber(bKg),
+                  sarjNo: safeGet('sarjNo'),
+                  paletNo: pNo,
+                  paletEbatlari: pEbat
+                });
+              }
+
+              if (newItems.length === 0) {
+                alert("Excel dosyasından geçerli bir veri satırı okunamadı. Lütfen dosyanızı kontrol edin.");
+              } else {
+                setItems(newItems);
+              }
+
+            } catch (err) {
+              console.error("Excel Ayrıştırma Hatası:", err);
+              alert("Excel dosyası okunurken bir hata oluştu: " + err.message);
+            } finally {
+              setIsExcelLoading(false);
+              if (inputEl) inputEl.value = "";
+            }
+          };
+
+          reader.onerror = () => {
+            alert("Dosya yükleme hatası!");
+            setIsExcelLoading(false);
+            if (inputEl) inputEl.value = "";
+          };
+
+          reader.readAsArrayBuffer(file);
+        }, 50);
+      };
+
+      const handleAddRow = () => {
+        const newRow = columns.reduce((acc, col) => ({ ...acc, [col.key]: '' }), { id: generateId() });
+        setItems([...items, newRow]);
+      };
+
+      const handleRemoveRow = (id) => {
+        setItems(items.filter(i => i.id !== id));
+        setSelectedIds(selectedIds.filter(i => i !== id));
+      };
+
+      const handleItemChange = (index, key, value) => {
+        setItems(prevItems => {
+          const newItems = [...prevItems];
+          const currentRow = newItems[index];
+          const currentPallet = (currentRow.paletNo || '').trim();
+          const isMergedKey = (key === 'brutKg' || key === 'paletNo' || key === 'paletEbatlari');
+
+          if (isMergedKey && currentPallet !== '') {
+            for (let k = 0; k < newItems.length; k++) {
+              if ((newItems[k].paletNo || '').trim() === currentPallet) {
+                newItems[k] = { ...newItems[k], [key]: value };
+              }
+            }
+          } else {
+            const updatedRow = { ...currentRow, [key]: value };
+            if (key === 'adet' || key === 'fiyat') {
+              const adet = parseFloat(updatedRow.adet) || 0;
+              const fiyat = parseFloat(updatedRow.fiyat) || 0;
+              if (adet && fiyat) updatedRow.tutar = (adet * fiyat).toFixed(2);
+            }
+            newItems[index] = updatedRow;
+          }
+          return newItems;
+        });
+      };
+
+      const toggleSelectAll = () => {
+        if (selectedIds.length === items.length) {
+          setSelectedIds([]);
+        } else {
+          setSelectedIds(items.map(i => i.id));
+        }
+      };
+
+      const toggleSelectRow = (id) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+      };
+
+      const handleApplyPalletGroup = () => {
+        if (selectedIds.length === 0) return;
+        setItems(prev => prev.map(item => {
+          if (selectedIds.includes(item.id)) {
+            return { ...item, paletNo: groupPalletNo, paletEbatlari: groupPalletEbat, brutKg: groupBrutKg };
+          }
+          return item;
+        }));
+        setGroupPalletNo(''); setGroupPalletEbat(''); setGroupBrutKg(''); setSelectedIds([]);
+      };
+
+      const handleSave = () => {
+        if (!invoiceNumber.trim() || !customerId) {
+          alert("Lütfen Fatura No ve Müşteri seçimini yapın.");
+          return;
+        }
+        onSaveChecklist({
+          exporterId: exporter.id,
+          invoiceNumber: invoiceNumber.trim(),
+          checklistDate,
+          deliveryDate,
+          customerId,
+          transporterId,
+          currency,
+          deliveryAddress,
+          selectedBankId,
+          selectedInsuranceId,
+          hasDownPayment,
+          downPaymentRate: Number(downPaymentRate) || 0,
+          isFreeOfCharge,
+          items,
+          createdAt: initialData?.createdAt || new Date().toISOString()
+        });
+      };
+
+      return (
+        <div className="flex flex-col h-full bg-white z-20 overflow-hidden">
+          <div className="bg-slate-900 text-white p-4 flex justify-between items-center shadow-md shrink-0">
+            <div className="flex items-center">
+              <button type="button" onClick={onBack} className="mr-4 p-2 hover:bg-slate-800 rounded-full text-slate-300 hover:text-white">
+                <ArrowLeft size={24} />
+              </button>
+              <h2 className="text-xl font-bold flex items-center">
+                <FileSpreadsheet className="mr-2 text-blue-400" /> {initialData ? 'Evrak Düzenle' : 'Yeni Evrak / Check List Oluştur'}
+              </h2>
+            </div>
+            <div className="text-slate-400 text-sm">İhracatçı: <span className="text-white font-medium">{exporter.name}</span></div>
+          </div>
+
+          <div className="p-4 border-b border-gray-200 bg-slate-50 shrink-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">FATURA NO *</label>
+                <input type="text" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="INV-2026-001" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">TARİH</label>
+                <input type="date" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={checklistDate} onChange={e => setChecklistDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">DÖVİZ</label>
+                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white font-bold" value={currency} onChange={e => setCurrency(e.target.value)}>
+                  <option value="EUR">EUR (€)</option><option value="USD">USD ($)</option><option value="TRY">TRY (₺)</option><option value="GBP">GBP (£)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">MÜŞTERİ *</label>
+                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={customerId} onChange={e => setCustomerId(e.target.value)}>
+                  <option value="">-- Seçin --</option>
+                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">NAKLİYECİ</label>
+                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={transporterId} onChange={e => setTransporterId(e.target.value)}>
+                  <option value="">-- Seçin --</option>
+                  {transporters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">BANKA HESABI</label>
+                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={selectedBankId} onChange={e => setSelectedBankId(e.target.value)}>
+                  <option value="">-- Otomatik Seç --</option>
+                  {exporter?.banks?.map(b => <option key={b.id} value={b.id}>{b.bankName} ({b.currency})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">SİGORTA ACENTESİ</label>
+                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={selectedInsuranceId} onChange={e => setSelectedInsuranceId(e.target.value)}>
+                  <option value="">-- Acente Seçin --</option>
+                  {exporter?.insurances?.map(i => <option key={i.id} value={i.id}>{i.agencyName}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">TESLİM TARİHİ (DELIVERY DATE)</label>
+                <input type="date" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">SEVK ADRESİ</label>
+                <input type="text" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Adres..." />
+              </div>
+              <div className="flex items-center gap-4 bg-white px-3 py-1.5 border rounded-lg md:col-span-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                  <input type="checkbox" checked={hasDownPayment} onChange={e => setHasDownPayment(e.target.checked)} className="w-4 h-4 accent-red-600" />
+                  Down Payment (Peşinat)
+                </label>
+                {hasDownPayment && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-slate-500">Oran (%):</span>
+                    <input type="number" min="0" max="100" step="1" value={downPaymentRate} onChange={e => setDownPaymentRate(e.target.value)} className="w-16 px-2 py-0.5 border rounded text-xs font-bold text-red-600 text-center" />
+                  </div>
+                )}
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer ml-auto">
+                  <input type="checkbox" checked={isFreeOfCharge} onChange={e => setIsFreeOfCharge(e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                  Bedelsiz
+                </label>
+              </div>
+            </div>
+
+            {selectedIds.length > 0 && (
+              <div className="bg-amber-50 border border-amber-300 p-2 rounded flex flex-wrap items-center justify-between gap-2 mb-2">
+                <span className="text-xs font-bold text-amber-900">{selectedIds.length} Satır Seçili - Palette Topla:</span>
+                <div className="flex items-center gap-2">
+                  <input type="text" placeholder="Palet No" className="px-2 py-1 border rounded text-xs w-24" value={groupPalletNo} onChange={e => setGroupPalletNo(e.target.value)} />
+                  <input type="text" placeholder="Ebat" className="px-2 py-1 border rounded text-xs w-28" value={groupPalletEbat} onChange={e => setGroupPalletEbat(e.target.value)} />
+                  <input type="text" placeholder="Brüt KG" className="px-2 py-1 border rounded text-xs w-24" value={groupBrutKg} onChange={e => setGroupBrutKg(e.target.value)} />
+                  <button type="button" onClick={handleApplyPalletGroup} className="bg-amber-600 text-white px-3 py-1 rounded text-xs font-bold">Birleştir</button>
+                  <button type="button" onClick={() => setSelectedIds([])} className="text-xs text-slate-500">Vazgeç</button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={handleAddRow} className="bg-white border text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center shadow-sm">
+                  <Plus size={16} className="mr-1" /> Satır Ekle
+                </button>
+                <button type="button" onClick={handleDownloadTemplate} className="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center shadow-sm">
+                  <Download size={16} className="mr-1" /> Şablon İndir
+                </button>
+                <div className="relative inline-block">
+                  <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} disabled={isExcelLoading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                  <button type="button" className={`px-3 py-1.5 text-white rounded-lg text-xs font-medium flex items-center shadow-sm ${isExcelLoading ? 'bg-indigo-400' : 'bg-indigo-600'}`}>
+                    {isExcelLoading ? <Loader2 className="mr-1" /> : <Upload size={16} className="mr-1" />}
+                    {isExcelLoading ? 'Yükleniyor...' : 'Excel Yükle'}
+                  </button>
+                </div>
+              </div>
+
+              {items.length > 0 && (
+                <div className="flex items-center gap-2 text-xs bg-slate-200 px-3 py-1 rounded-lg">
+                  <span className="font-semibold text-slate-700">Toplam {items.length} Kalem</span>
+                  <span className="text-slate-400">|</span>
+                  <button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="disabled:opacity-40 font-bold px-1.5 py-0.5 bg-white rounded">
+                    &lt;
+                  </button>
+                  <span className="font-bold text-blue-700">Sayfa {currentPage} / {totalPages}</span>
+                  <button type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="disabled:opacity-40 font-bold px-1.5 py-0.5 bg-white rounded">
+                    &gt;
+                  </button>
+                  <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="bg-white border rounded px-1 py-0.5 ml-1">
+                    <option value={25}>25 Göster</option>
+                    <option value={50}>50 Göster</option>
+                    <option value={100}>100 Göster</option>
+                  </select>
+                </div>
+              )}
+
+              <button type="button" onClick={handleSave} className="px-6 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center shadow-md">
+                <Save size={16} className="mr-1.5" /> Kaydet
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto bg-slate-200 p-3">
+            <div className="bg-white rounded-xl shadow-lg inline-block min-w-full overflow-hidden">
+              <table className="min-w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                  <tr className="bg-slate-800 text-white text-xs uppercase tracking-wider sticky top-0 z-10">
+                    <th className="p-2.5 w-8 text-center border-r border-slate-700">
+                      <input type="checkbox" checked={items.length > 0 && selectedIds.length === items.length} onChange={toggleSelectAll} />
+                    </th>
+                    <th className="p-2.5 w-10 text-center border-r border-slate-700">Sil</th>
+                    {columns.map(col => <th key={col.key} className={`p-2.5 font-semibold border-x border-slate-700 ${col.width}`}>{col.label}</th>)}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 text-sm">
+                  {items.length === 0 ? (
+                    <tr><td colSpan={columns.length + 2} className="p-8 text-center text-slate-500">Henüz kalem bulunmuyor. Excel yükleyebilir veya satır ekleyebilirsiniz.</td></tr>
+                  ) : (
+                    paginatedRows.map((rowInfo) => {
+                      const index = rowInfo.originalIndex;
+                      const row = rowInfo.item;
+                      const isSelected = selectedIds.includes(row.id);
+
+                      return (
+                        <tr key={row.id} className={`transition-colors ${isSelected ? 'bg-amber-200/70' : `${rowInfo.groupColor} hover:bg-blue-100/40`}`}>
+                          <td className="p-1 border-r text-center border-slate-200">
+                            <input type="checkbox" checked={isSelected} onChange={() => toggleSelectRow(row.id)} />
+                          </td>
+                          <td className="p-1 border-r text-center border-slate-200">
+                            <button type="button" onClick={() => handleRemoveRow(row.id)} className="text-slate-400 hover:text-red-500 p-1">
+                              <Trash2 size={15} />
+                            </button>
+                          </td>
+
+                          {columns.map(col => {
+                            const isMergedField = (col.key === 'brutKg' || col.key === 'paletNo' || col.key === 'paletEbatlari');
+
+                            if (isMergedField) {
+                              if (!rowInfo.isFirstInGroup) return null;
+                              return (
+                                <td key={col.key} rowSpan={rowInfo.rowSpan} className="p-1 border-r border-slate-300 align-middle bg-slate-50 text-center font-bold">
+                                  <input 
+                                    type="text" 
+                                    value={row[col.key] ?? ''} 
+                                    onChange={(e) => handleItemChange(index, col.key, e.target.value)} 
+                                    className="w-full px-1.5 py-1 bg-transparent outline-none focus:bg-white text-xs font-bold text-center text-blue-900" 
+                                    placeholder="-" 
+                                  />
+                                </td>
+                              );
+                            }
+
+                            return (
+                              <td key={col.key} className="p-1 border-r border-slate-200">
+                                <input 
+                                  type="text" 
+                                  value={row[col.key] ?? ''} 
+                                  onChange={(e) => handleItemChange(index, col.key, e.target.value)} 
+                                  className="w-full px-1.5 py-1 bg-transparent outline-none focus:bg-white text-xs" 
+                                  placeholder="-" 
+                                />
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+                <tfoot className="bg-slate-900 text-white font-bold text-xs sticky bottom-0 z-10 shadow-lg border-t-2 border-slate-700">
+                  <tr>
+                    <td colSpan={8} className="p-2.5 text-right uppercase tracking-wider font-extrabold text-slate-300 bg-slate-950">
+                      GENEL TOPLAM / TOTALS:
+                    </td>
+                    <td className="p-2.5 text-right"></td>
+                    <td className="p-2.5 text-right font-extrabold text-amber-400 text-sm">
+                      {totals.totalAdet.toLocaleString('tr-TR')}
+                    </td>
+                    <td className="p-2.5 text-right font-extrabold text-emerald-400 text-sm">
+                      {totals.totalTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
+                    </td>
+                    <td className="p-2.5 text-right font-extrabold text-sky-300 text-sm">
+                      {totals.totalNetKg.toLocaleString('tr-TR')} KG
+                    </td>
+                    <td className="p-2.5 text-right font-extrabold text-amber-300 text-sm bg-slate-800">
+                      {totals.totalBrutKg.toLocaleString('tr-TR')} KG
+                    </td>
+                    <td className="p-2.5 text-center font-extrabold text-indigo-300 text-sm bg-slate-800">
+                      {totals.paletCount} Palet
+                    </td>
+                    <td className="p-2.5"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function ExportSetPrintModal({ checklist, exporter, customer, transporter, onClose }) {
+      const [activeTab, setActiveTab] = useState('invoice');
+      const [showStamp, setShowStamp] = useState(false);
+      const [hasDownPayment, setHasDownPayment] = useState(checklist?.hasDownPayment || false);
+      const [downPaymentRate, setDownPaymentRate] = useState(checklist?.downPaymentRate ?? 30);
+      const [isFreeOfCharge, setIsFreeOfCharge] = useState(checklist?.isFreeOfCharge || false);
+      const [deliveryDate, setDeliveryDate] = useState(checklist?.deliveryDate || '');
+      const [customDeliveryAddress, setCustomDeliveryAddress] = useState(checklist?.deliveryAddress || '');
+
+      const items = checklist?.items || [];
+      const processedRows = useMemo(() => processTableRows(items), [items]);
+      const totals = useMemo(() => calculateTotals(items, processedRows), [items, processedRows]);
+      const currency = checklist?.currency || 'EUR';
+
+      const downPaymentAmount = useMemo(() => {
+        if (!hasDownPayment) return 0;
+        return (totals.totalTutar * (Number(downPaymentRate) || 0)) / 100;
+      }, [hasDownPayment, downPaymentRate, totals.totalTutar]);
+
+      const remainingAmount = useMemo(() => {
+        if (!hasDownPayment) return totals.totalTutar;
+        return Math.max(0, totals.totalTutar - downPaymentAmount);
+      }, [hasDownPayment, totals.totalTutar, downPaymentAmount]);
+
+      const rawInvoiceDate = checklist?.checklistDate || new Date().toISOString().split('T')[0];
+      const invoiceDate = formatDateTR(rawInvoiceDate);
+      const formattedDeliveryDate = formatDateTR(deliveryDate);
+      const hasCustomDelivery = Boolean(customDeliveryAddress && customDeliveryAddress.trim() !== '');
+
+      const uniquePartNames = Array.from(new Set(items.map(i => i.parcaAdi).filter(Boolean))).join(' & ');
+      const uniqueOrders = Array.from(new Set(items.map(i => i.sipRefNo).filter(Boolean))).join(' & ');
+
+      const palletMap = {};
+      items.forEach(i => { if (i.paletNo && i.paletEbatlari) palletMap[i.paletNo] = i.paletEbatlari; });
+      const dimensionCounts = {};
+      Object.values(palletMap).forEach(dim => { dimensionCounts[dim] = (dimensionCounts[dim] || 0) + 1; });
+      const palletSummary = Object.entries(dimensionCounts).map(([dim, count]) => `${count} Pallets ${dim}`).join(' & ');
+
+      const selectedBank = exporter?.banks?.find(b => b.id === checklist?.selectedBankId) || exporter?.banks?.filter(b => b.currency === currency)[0] || exporter?.banks?.[0];
+      const selectedInsurance = exporter?.insurances?.find(i => i.id === checklist?.selectedInsuranceId) || exporter?.insurances?.[0];
+
+      // Kalem sayısına göre (Az satırlı vs Çok satırlı) dinamik görsel optimizasyon
+      const isFewRows = items.length <= 6;
+      const isMediumRows = items.length > 6 && items.length <= 15;
+      const isCompact = items.length > 16;
+      const isUltraCompact = items.length > 22;
+
+      const rowPadding = isUltraCompact
+        ? 'py-[2px] px-1.5'
+        : isCompact
+        ? 'py-[3px] px-2'
+        : isFewRows
+        ? 'py-2 px-2'
+        : 'py-1 px-2';
+
+      const packingRowPadding = isUltraCompact
+        ? 'py-[2px] px-1.5'
+        : isCompact
+        ? 'py-[3px] px-2'
+        : isFewRows
+        ? 'py-2.5 px-2'
+        : 'py-1.5 px-2';
+
+      const tableFontSize = isUltraCompact
+        ? 'text-[9px]'
+        : isFewRows
+        ? 'text-[10.5px]'
+        : 'text-[10px]';
+
+      // Az satırlı faturalarda tabloyu A4 sayfasına dengeli yayacak dolgu yüksekliği
+      const fillerHeight = isFewRows
+        ? Math.max(140, 260 - items.length * 32)
+        : isMediumRows
+        ? Math.max(40, 210 - items.length * 22)
+        : Math.max(0, 140 - items.length * 18);
+
+      const packingFillerHeight = isFewRows
+        ? Math.max(80, 180 - items.length * 30)
+        : 0;
+
+      const tabs = [
+        { id: 'invoice', label: 'Invoice' },
+        { id: 'packing', label: 'Çeki Listesi' },
+        { id: 'workOrder', label: 'İş Emri' },
+        { id: 'transport', label: 'Nakliye Talimatı' },
+        { id: 'insurance', label: 'Sigorta Talimatı' },
+        { id: 'atr', label: 'A.TR Belgesi' }
+      ];
+
+      const StampImage = ({ className }) => {
+        if (!showStamp || !exporter?.stamp) return null;
+        return <img src={exporter.stamp} alt="Kaşe İmza" className={`absolute mix-blend-multiply opacity-95 pointer-events-none ${className}`} style={{ maxWidth: '210px', maxHeight: '110px' }} />;
+      };
+
+      return (
+        <div className="fixed inset-0 bg-slate-900/90 z-50 flex flex-col p-4 print-modal-wrapper">
+          <div className="bg-white rounded-xl shadow-2xl max-w-[1120px] mx-auto w-full flex-1 flex flex-col overflow-hidden border border-slate-300 print-modal-inner">
+            {/* Modal Header & Tabs (Yazdırırken Gizlenir) */}
+            <div className="no-print bg-slate-100 flex flex-col z-10 shrink-0">
+              <div className="p-3.5 flex flex-wrap justify-between items-center gap-3 border-b border-slate-300">
+                <div className="flex items-center gap-2">
+                  <Layers className="text-indigo-600 w-5 h-5" />
+                  <h3 className="text-base font-bold text-slate-800">Tam İhracat Seti</h3>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2.5 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-600">Sevk Adresi:</span>
+                      <input 
+                        type="text" 
+                        value={customDeliveryAddress} 
+                        onChange={e => setCustomDeliveryAddress(e.target.value)} 
+                        placeholder="Farklı sevk adresi..."
+                        className="border border-slate-300 rounded px-2 py-0.5 text-xs font-semibold text-blue-800 outline-none focus:border-indigo-500 w-44"
+                      />
+                    </div>
+                    {activeTab === 'invoice' && (
+                      <>
+                        <span className="text-slate-300">|</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-slate-600">Delivery Date:</span>
+                          <input 
+                            type="date" 
+                            value={deliveryDate} 
+                            onChange={e => setDeliveryDate(e.target.value)} 
+                            className="border border-slate-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                        <span className="text-slate-300">|</span>
+                        <label className="flex items-center gap-1.5 font-bold text-slate-700 cursor-pointer">
+                          <input type="checkbox" checked={isFreeOfCharge} onChange={e => setIsFreeOfCharge(e.target.checked)} className="w-3.5 h-3.5 accent-slate-800" />
+                          BEDELSİZ
+                        </label>
+                        <span className="text-slate-300">|</span>
+                        <label className="flex items-center gap-1.5 font-bold text-red-700 cursor-pointer">
+                          <input type="checkbox" checked={hasDownPayment} onChange={e => setHasDownPayment(e.target.checked)} className="w-3.5 h-3.5 accent-red-600" />
+                          Down Payment
+                        </label>
+                        {hasDownPayment && (
+                          <div className="flex items-center border border-slate-300 rounded overflow-hidden">
+                            <input 
+                              type="number" 
+                              value={downPaymentRate} 
+                              onChange={e => setDownPaymentRate(e.target.value)} 
+                              className="w-12 px-1.5 py-0.5 text-center font-bold text-red-600 outline-none"
+                            />
+                            <span className="bg-slate-100 px-1.5 py-0.5 font-bold text-slate-600">%</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {exporter?.stamp && (
+                    <label className="flex items-center gap-2 cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 px-3 py-1.5 rounded-lg border border-amber-300 text-xs font-bold shadow-sm transition-colors">
+                      <input type="checkbox" checked={showStamp} onChange={(e) => setShowStamp(e.target.checked)} className="w-4 h-4 cursor-pointer accent-amber-600" />
+                      Kaşe/İmza Bas
+                    </label>
+                  )}
+                  <button type="button" onClick={() => window.print()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-1.5 rounded-lg font-bold flex items-center shadow-md transition-colors text-sm">
+                    <Printer size={16} className="mr-1.5" /> Yazdır (A4)
+                  </button>
+                  <button type="button" onClick={onClose} className="bg-slate-300 text-slate-700 hover:bg-slate-400 px-4 py-1.5 rounded-lg font-medium text-sm transition-colors">Kapat</button>
+                </div>
+              </div>
+
+              {/* TABS */}
+              <div className="flex bg-slate-200 px-2 pt-2 gap-1 overflow-x-auto shadow-inner">
+                {tabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-5 py-2 rounded-t-lg font-bold text-xs transition-colors whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-indigo-700 border-t-2 border-indigo-600 shadow-[0_-2px_6px_rgba(0,0,0,0.05)] z-10' : 'bg-slate-100 text-slate-600 hover:bg-slate-50 border-t-2 border-transparent'}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Document Render Area */}
+            <div className="flex-1 overflow-y-auto bg-slate-300 p-6 print-container">
+              
+              {/* 1. INVOICE */}
+              {activeTab === 'invoice' && (
+                <div className="bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', minHeight: '287mm' }}>
+                  
+                  <div>
+                    {/* TOP: Centered Logo */}
+                    <div className="flex flex-col items-center mb-3">
+                      {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-24 max-w-[260px] object-contain" />}
+                    </div>
+                    
+                    {/* EXPORTER DETAILS */}
+                    <div className="text-[10px] mb-3.5">
+                       <div className="font-bold mb-1 text-[11px] text-black">{exporter?.address}</div>
+                       <div className="grid grid-cols-[65px_145px_100px_1fr] gap-x-2 gap-y-0.5 max-w-lg items-center">
+                          <div className="text-[#0052cc] font-semibold whitespace-nowrap">Tel:</div>
+                          <div className="font-medium text-black whitespace-nowrap">{exporter?.phone}</div>
+                          <div className="text-[#0052cc] font-semibold whitespace-nowrap">D-U-N-S ® Number:</div>
+                          <div className="font-medium text-black whitespace-nowrap">{exporter?.dunsNumber}</div>
+                          
+                          <div className="text-[#0052cc] font-semibold whitespace-nowrap">Fax:</div>
+                          <div className="font-medium text-black whitespace-nowrap">{exporter?.fax}</div>
+                          <div className="text-[#0052cc] font-semibold whitespace-nowrap">EORI Number:</div>
+                          <div className="font-medium text-black whitespace-nowrap">{exporter?.eoriNumber}</div>
+                          
+                          <div className="text-[#0052cc] font-semibold whitespace-nowrap">VAT ID No:</div>
+                          <div className="font-bold text-black whitespace-nowrap col-span-3">{exporter?.vatNo}</div>
+                       </div>
+                    </div>
+
+                    {/* CONSIGNEE & INVOICE BANNER */}
+                    <div className="flex justify-between items-stretch mb-3 gap-4">
+                       {/* CONSIGNEE BOX (Sevk Adresi Varsa Örnek.pdf Gibi Gösterir) */}
+                       <div className="border border-black p-2.5 w-[58%] min-h-[100px] text-[10.5px] flex flex-col justify-between bg-white">
+                         <div>
+                           <div className="font-black text-[13px] uppercase text-black leading-snug">{customer?.name}</div>
+                           <div className="mt-0.5 text-black leading-snug">{customer?.address}</div>
+                           <div className="font-extrabold mt-0.5 uppercase text-black">{customer?.country}</div>
+                         </div>
+
+                         <div className="flex justify-between items-end pt-2 mt-1">
+                           {hasCustomDelivery ? (
+                             <div className="text-[9.5px] leading-tight pr-2">
+                               <div className="text-[#c00000] font-black uppercase tracking-wide">DELIVERY ADDRESS</div>
+                               <div className="text-[#0052cc] font-bold mt-0.5 whitespace-pre-line">{customDeliveryAddress}</div>
+                             </div>
+                           ) : <div />}
+                           <div className="text-right font-bold text-black text-[10.5px] whitespace-nowrap ml-auto">
+                             VAT ID: {customer?.vatNo}
+                           </div>
+                         </div>
+                       </div>
+
+                       {/* INVOICE BANNER & INFO */}
+                       <div className="w-[39%] relative flex flex-col justify-between">
+                         <StampImage className="-top-24 left-1/2 -translate-x-1/2 z-20 !max-w-[195px] !max-h-[95px]" />
+                         
+                         <div className="bg-[#c00000] text-white text-center font-black text-lg py-1 border border-black uppercase tracking-widest">
+                           INVOICE
+                         </div>
+                         <div className="border border-black bg-white px-2.5 py-1.5 flex-1 flex flex-col justify-center mt-1.5">
+                           <div className="grid grid-cols-[100px_1fr] text-[10px] gap-y-1 font-bold">
+                             <div className="text-black">Delivery Date</div>
+                             <div className="text-right text-black font-extrabold">{formattedDeliveryDate}</div>
+                             <div className="text-black">Date of invoice</div>
+                             <div className="text-right text-black font-extrabold">{invoiceDate}</div>
+                             <div className="text-black">Invoice Number</div>
+                             <div className="text-right text-black font-black">{checklist?.invoiceNumber}</div>
+                           </div>
+                         </div>
+                       </div>
+                    </div>
+
+                    {/* TABLE & BOTTOM SECTION: Tek Colgroup Hizasıyla Milimetrik Çizgi Bütünlüğü */}
+                    <table className={`w-full text-left ${tableFontSize} border-collapse border border-black mb-0`} style={{tableLayout: 'fixed'}}>
+                      <colgroup>
+                        <col className="w-[13%]" />
+                        <col className="w-[5%]" />
+                        <col className="w-[28%]" />
+                        <col className="w-[12%]" />
+                        <col className="w-[11%]" />
+                        <col className="w-[15%]" />
+                        <col className="w-[16%]" />
+                      </colgroup>
+                      <thead>
+                        <tr className="bg-[#c00000] text-white text-center">
+                          <th colSpan="4" className="border border-black py-1.5 px-1 font-extrabold uppercase tracking-wider text-[10px]">
+                            DESCRIPTION OF THE GOODS
+                          </th>
+                          <th rowSpan="2" className="border border-black p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
+                            QUANTITY
+                          </th>
+                          <th rowSpan="2" className="border border-black p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
+                            UNIT PRICE
+                          </th>
+                          <th rowSpan="2" className="border border-black p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
+                            TOTAL
+                          </th>
+                        </tr>
+                        <tr className="bg-[#c00000] text-white text-center text-[9px]">
+                          <th className="font-bold border border-black py-1 px-1 whitespace-nowrap">Order No</th>
+                          <th className="font-bold border border-black py-1 px-0.5 whitespace-nowrap">Pos No</th>
+                          <th className="font-bold border border-black py-1 px-1 whitespace-nowrap">Part Name</th>
+                          <th className="font-bold border border-black py-1 px-1 whitespace-nowrap">Drawing No</th>
+                        </tr>
+                      </thead>
+                      <tbody className="align-middle text-black">
+                        {items.map((item, idx) => {
+                            const adet = parseFloat(item.adet) || 0;
+                            const fiyat = parseFloat(item.fiyat) || 0;
+                            const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
+                            return (
+                              <tr key={idx} className="border-b border-slate-400">
+                                <td className={`border-r border-black ${rowPadding} truncate font-medium`}>{item.sipRefNo}</td>
+                                <td className={`border-r border-black ${rowPadding} text-center`}>{item.posNo}</td>
+                                <td className={`border-r border-black ${rowPadding} font-semibold leading-snug`}>{item.parcaAdi}</td>
+                                <td className={`border-r border-black ${rowPadding} truncate`}>{item.resimNo}</td>
+                                <td className={`border-r border-black ${rowPadding} text-right whitespace-nowrap font-semibold`}>{adet} PCS</td>
+                                <td className={`border-r border-black ${rowPadding} text-right whitespace-nowrap`}>{fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
+                                <td className={`${rowPadding} text-right font-bold whitespace-nowrap`}>{tutar.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
+                              </tr>
+                            );
+                        })}
+                        {fillerHeight > 0 && (
+                          <tr style={{ height: `${fillerHeight}px` }}>
+                              <td className="border-r border-black"></td>
+                              <td className="border-r border-black"></td>
+                              <td className="border-r border-black"></td>
+                              <td className="border-r border-black"></td>
+                              <td className="border-r border-black"></td>
+                              <td className="border-r border-black"></td>
+                              <td></td>
+                          </tr>
+                        )}
+
+                        {/* ALT BÖLÜM SATIR 1: Regülasyon Metni ve Net Amount (Yatay ve Dikey Çizgiler %100 Hizalı) */}
+                        <tr className="border-t border-b border-black">
+                          <td colSpan="4" className="border-r border-black p-2 text-[#0052cc] font-bold text-[8.5px] leading-snug bg-slate-100 align-middle">
+                            According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
+                          </td>
+                          <td colSpan="3" className="p-2 bg-white align-bottom">
+                            {isFreeOfCharge && (
+                              <div className="text-[8.5px] font-extrabold text-[#c00000] uppercase leading-tight mb-1.5">
+                                FREE OF CHARGE. VALUE FOR CUSTOMS PURPOSES ONLY.
+                              </div>
+                            )}
+                            <div className="flex justify-between items-end font-extrabold text-[11px] text-black">
+                              <span>Net Amount</span>
+                              <span>{totals?.totalTutar?.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* ALT BÖLÜM SATIR 2: Ağırlık/Banka Bilgileri ve VAT / Invoice Amount / Down Payment */}
+                        <tr>
+                          <td colSpan="4" className="border-r border-black p-2 align-top">
+                            <div className="grid grid-cols-[115px_1fr] gap-x-2 gap-y-0.5 text-[9px] uppercase items-center">
+                               <div className="text-black font-bold">NET WEIGHT :</div><div className="text-black font-semibold">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</div>
+                               <div className="text-black font-bold">GROSS WEIGHT :</div><div className="text-black font-semibold">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</div>
+                               <div className="text-black font-bold">QUANTITY :</div><div className="text-black font-semibold">{totals?.totalAdet?.toLocaleString('tr-TR')} PCS</div>
+                               <div className="text-black font-bold">PACKED IN :</div>
+                               <div className="text-black font-semibold flex items-center justify-between pr-2">
+                                 <span>{totals?.paletCount} PALLETS</span>
+                                 <span className="text-[#0052cc] text-[10px] font-black italic inline-flex items-center gap-1">TCT <Truck size={11} className="inline text-[#0052cc]"/></span>
+                               </div>
+                               <div className="text-black font-bold">PALLET DIMENSIONS :</div>
+                               <div className="text-black text-[8.5px] leading-tight font-semibold normal-case">{palletSummary}</div>
+                               <div className="text-black font-bold pt-0.5">ORIGIN :</div>
+                               <div className="text-black font-extrabold flex items-center gap-1.5 pt-0.5">
+                                 TÜRKİYE TR <span className="bg-[#c00000] text-white px-1 text-[7.5px] rounded-sm font-black">C*</span>
+                               </div>
+                               
+                               <div className="text-black font-bold mt-1 pt-1 border-t border-slate-300">OUR BANK DETAILS</div>
+                               <div className="text-black font-semibold mt-1 pt-1 border-t border-slate-300">{selectedBank?.bankName || '-'}</div>
+                               
+                               <div className="text-black font-bold">SWIFT CODE</div>
+                               <div className="text-black font-semibold">{selectedBank?.swift || '-'}</div>
+                               
+                               <div className="text-black font-bold">ACCOUNT NO</div>
+                               <div className="text-black font-semibold">-</div>
+                               
+                               <div className="text-black font-bold">IBAN NO</div>
+                               <div className="text-black font-bold">{selectedBank?.iban || '-'}</div>
+                            </div>
+                          </td>
+                          <td colSpan="3" className="p-0 align-top h-full">
+                            <div className="flex flex-col justify-between h-full font-bold text-[10.5px]" style={{ minHeight: '155px' }}>
+                              <div>
+                                {/* VAT */}
+                                <div className="flex justify-between items-center px-2 py-1 text-[#0052cc] border-b border-black text-[11px]">
+                                   <span>VAT</span>
+                                   <span>0,00 .-{getSymbol(currency)}</span>
+                                </div>
+
+                                {/* Invoice Amount */}
+                                <div className="flex justify-between items-center px-2 py-1.5 border-b-2 border-double border-black text-[11px] bg-white">
+                                   <span className="font-extrabold text-black">Invoice Amount</span>
+                                   <span className="text-[#c00000] text-[9.5px] font-black uppercase text-center px-1">{customer?.country} {transporter?.deliveryTerm}</span>
+                                   <span className="font-black text-black">{totals?.totalTutar?.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
+                                </div>
+
+                                {/* Down Payment & Remaining Amount */}
+                                {hasDownPayment && (
+                                  <div>
+                                    <div className="flex justify-between items-center px-2 py-1.5 text-[#c00000] font-extrabold text-[10.5px]">
+                                      <div className="flex items-center gap-2 ml-auto mr-3">
+                                        <span className="underline">DOWN PAYMENT</span>
+                                        <span className="underline">{downPaymentRate}%</span>
+                                      </div>
+                                      <div className="underline whitespace-nowrap">
+                                        {downPaymentAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center px-2 py-1 text-[#0052cc] font-extrabold text-[11px] border-t border-slate-300">
+                                      <span className="underline">REMAINING AMOUNT</span>
+                                      <span className="underline whitespace-nowrap">
+                                        {remainingAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="p-1.5 text-center bg-slate-50 border-t border-black mt-auto">
+                                <span className="text-[#0052cc] underline text-[8.5px] font-bold leading-tight block">
+                                  {getAmountInWords(hasDownPayment ? remainingAmount : totals?.totalTutar, currency)}
+                                </span>
+                                {isFreeOfCharge && (
+                                  <span className="text-[#c00000] font-bold text-[8px] block mt-0.5 uppercase">
+                                    Free of charge. Value for customs purposes only.
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* FOOTER */}
+                  <div className="mt-2 flex flex-col items-center justify-center pt-1">
+                    <div className="flex flex-wrap justify-center gap-5 w-full px-6 mb-1.5 text-[#0052cc] text-[9.5px] font-semibold">
+                      {customer?.contacts && customer.contacts.filter(c => c.email).length > 0 ? (
+                        customer.contacts.filter(c => c.email).map((c, i) => (
+                          <a key={i} href={`mailto:${c.email}`} className="underline flex items-center gap-1">
+                            <Icon name="mail" size={10}/> {c.name ? `${c.name} (${c.email})` : c.email}
+                          </a>
+                        ))
+                      ) : null}
+                    </div>
+                    <div className="w-full text-center text-[9px] bg-slate-200 border border-black py-1.5 px-2 font-bold text-black">
+                      {exporter?.name}<br/>
+                      <span className="font-normal text-[8.5px]">{exporter?.address} Tel: {exporter?.phone} Fax: {exporter?.fax}</span><br/>
+                      VAT ID No: {exporter?.vatNo}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* 2. PACKING LIST (Çeki Listesi) */}
+              {activeTab === 'packing' && (
+                <div className="bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', minHeight: '287mm' }}>
+                  
+                  <div>
+                    {/* TOP: Centered Logo */}
+                    <div className="flex flex-col items-center mb-2">
+                      {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-22 max-h-[82px] max-w-[250px] object-contain" />}
+                    </div>
+
+                    {/* CUSTOMER INFO & DELIVERY ADDRESS */}
+                    <div className="border border-black bg-white mb-2 text-[10px]">
+                      <div className="grid grid-cols-[110px_1fr_185px] gap-3 p-2.5 items-center">
+                        <div className="font-extrabold text-black self-start pt-0.5 tracking-wide">CUSTOMER</div>
+                        <div className="flex flex-col border-l border-slate-300 pl-3">
+                          <div className="font-black text-[12.5px] text-black uppercase leading-snug">{customer?.name}</div>
+                          <div className="text-black mt-0.5 leading-snug">{customer?.address}</div>
+                          <div className="flex items-center gap-6 mt-1.5 font-bold text-black">
+                            <span className="uppercase">{customer?.country}</span>
+                            <span>VAT ID: {customer?.vatNo}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end justify-between h-full">
+                          {customer?.logo && <img src={customer.logo} alt="Customer Logo" className="h-12 max-w-[165px] object-contain" />}
+                          <div className="text-[10px] font-extrabold text-black mt-auto pt-1">
+                            Date: {invoiceDate}
+                          </div>
+                        </div>
+                      </div>
+
+                      {hasCustomDelivery && (
+                        <div className="grid grid-cols-[110px_1fr] gap-3 px-2.5 py-1.5 border-t border-black bg-slate-50/50 items-center">
+                          <div className="font-black text-[#c00000] text-[9.5px] uppercase tracking-wide">DELIVERY ADDRESS</div>
+                          <div className="font-bold text-[#0052cc] text-[10px] border-l border-slate-300 pl-3 leading-snug whitespace-pre-line">
+                            {customDeliveryAddress}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ORDER NO BOX */}
+                    <div className="grid grid-cols-[110px_1fr] gap-3 text-[9.5px] mb-2 border border-black px-2.5 py-1.5 bg-slate-50/60 items-center">
+                      <div className="font-extrabold uppercase text-black">YOUR ORDER NO</div>
+                      <div className="leading-snug font-bold text-black border-l border-slate-300 pl-3">{uniqueOrders}</div>
+                    </div>
+
+                    <div className="text-center font-bold text-[10px] mb-1.5 text-black">
+                      We accomplished the fabricating of the <span className="underline">{uniquePartNames || 'parts'}</span>. You can find detailed packing list as below.
+                    </div>
+
+                    {/* TABLE */}
+                    <table className={`w-full text-center ${tableFontSize} border-collapse border border-black mb-1`} style={{tableLayout: 'fixed'}}>
+                      <colgroup>
+                        <col className="w-[46%]" />
+                        <col className="w-[5%]" />
+                        <col className="w-[8%]" />
+                        <col className="w-[13%]" />
+                        <col className="w-[13%]" />
+                        <col className="w-[15%]" />
+                      </colgroup>
+                      <thead>
+                        <tr className="bg-[#c00000] text-white border-b border-black">
+                          <th colSpan="6" className="p-1 font-extrabold uppercase tracking-wider text-[10px]">
+                            ÇEKİ VE AMBALAJ LİSTESİ<br/><span className="text-[9px] font-bold">(WEIGHT AND PACKING LIST)</span>
+                          </th>
+                        </tr>
+                        <tr className="bg-slate-100 border-b border-black text-[8.5px] font-bold text-black">
+                          <th className="border-r border-black py-1 px-2 text-left">Malın Cinsi<br/><span className="text-[#0052cc] font-normal">(Description)</span></th>
+                          <th className="border-r border-black py-1 px-0.5">Miktarı<br/><span className="text-[#0052cc] font-normal">(Qty)</span></th>
+                          <th className="border-r border-black py-1 px-0.5">Ambalaj<br/><span className="text-[#0052cc] font-normal">(Packing)</span></th>
+                          <th className="border-r border-black py-1 px-1">Net Ağırlık<br/><span className="text-[#0052cc] font-normal">(Net Weight)</span></th>
+                          <th className="border-r border-black py-1 px-1">Brüt Ağırlık<br/><span className="text-[#0052cc] font-normal">(Gross Weight)</span></th>
+                          <th className="py-1 px-1">Palet Ebatları<br/><span className="text-[#0052cc] font-normal">(Pallet Dim.)</span></th>
+                        </tr>
+                      </thead>
+                      <tbody className="align-middle border-b border-black text-black">
+                        <tr>
+                          <td colSpan="6" className="text-left font-bold py-1.5 px-2 bg-white border-b border-black text-[10px]">
+                            Çelik Dökümden Aşınır Parçalar / <span className="text-[#0052cc] font-semibold">Steel Casting Wear Parts</span>
+                          </td>
+                        </tr>
+                        {processedRows.map((rowInfo, idx) => {
+                          const item = rowInfo.item;
+                          const rowBg = rowInfo.groupColor || 'bg-white';
+
+                          return (
+                            <tr key={idx} className={`${rowBg} border-b border-slate-400`}>
+                              <td className={`border-r border-black ${packingRowPadding} text-left font-medium leading-tight`}>
+                                <span className="font-bold">{item.parcaAdi}</span> {item.resimNo ? `- ${item.resimNo}` : ''}
+                              </td>
+                              <td className={`border-r border-black ${packingRowPadding} font-bold`}>{item.adet}</td>
+                              
+                              {rowInfo.isFirstInGroup ? (
+                                <>
+                                  <td rowSpan={rowInfo.rowSpan} className={`border-r border-black ${packingRowPadding} font-bold text-black align-middle ${rowBg}`}>{item.paletNo}</td>
+                                  <td className={`border-r border-black ${packingRowPadding} whitespace-nowrap`}>{item.netKg ? `${item.netKg} KGS` : '-'}</td>
+                                  <td rowSpan={rowInfo.rowSpan} className={`border-r border-black ${packingRowPadding} font-bold text-black align-middle whitespace-nowrap ${rowBg}`}>{item.brutKg ? `${item.brutKg} KGS` : '-'}</td>
+                                  <td rowSpan={rowInfo.rowSpan} className={`${packingRowPadding} font-semibold text-black align-middle whitespace-nowrap ${rowBg}`}>{item.paletEbatlari}</td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className={`border-r border-black ${packingRowPadding} whitespace-nowrap`}>{item.netKg ? `${item.netKg} KGS` : '-'}</td>
+                                </>
+                              )}
+                            </tr>
+                          );
+                        })}
+                        {packingFillerHeight > 0 && (
+                          <tr style={{ height: `${packingFillerHeight}px` }}>
+                            <td className="border-r border-black"></td>
+                            <td className="border-r border-black"></td>
+                            <td className="border-r border-black"></td>
+                            <td className="border-r border-black"></td>
+                            <td className="border-r border-black"></td>
+                            <td></td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+
+                    {/* REGULATION & TOTALS */}
+                    <div className="bg-slate-100 py-1.5 px-2 text-center text-[#0052cc] font-bold text-[8px] border border-black mb-1 leading-snug">
+                      According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
+                    </div>
+
+                    <table className="w-full text-center text-[9.5px] font-bold border-collapse border border-black mb-1.5" style={{tableLayout: 'fixed'}}>
+                      <colgroup>
+                        <col className="w-[46%]" />
+                        <col className="w-[5%]" />
+                        <col className="w-[8%]" />
+                        <col className="w-[13%]" />
+                        <col className="w-[13%]" />
+                        <col className="w-[15%]" />
+                      </colgroup>
+                      <tbody>
+                        <tr className="bg-slate-100 text-black">
+                          <td className="border-r border-black py-1.5 px-2 uppercase font-black">TOTAL</td>
+                          <td className="border-r border-black py-1.5 px-0.5 font-black">{totals?.totalAdet?.toLocaleString('tr-TR')}</td>
+                          <td className="border-r border-black py-1.5 px-0.5 font-black">{totals?.paletCount}</td>
+                          <td className="border-r border-black py-1.5 px-1 font-black whitespace-nowrap">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
+                          <td className="border-r border-black py-1.5 px-1 font-black whitespace-nowrap">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
+                          <td className="py-1.5 px-1 text-center align-middle">
+                            <span className="text-[#0052cc] italic font-black inline-flex items-center justify-center gap-1">
+                              TCT <Truck size={11} className="inline text-[#0052cc]"/>
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {/* STAMP AREA */}
+                    <div className="text-center text-[10px] font-bold mt-1 relative flex flex-col items-center">
+                      <div>
+                        <span className="text-[#0052cc]">YALNIZ {totals?.paletCount} Palet</span>
+                        <span className="mx-4"></span>
+                        <span className="text-[#c00000]">ONLY {totals?.paletCount} Pallets</span>
+                      </div>
+
+                      <div className="mt-1 relative w-full flex justify-center h-[80px]">
+                         {showStamp && exporter?.stamp && (
+                           <img src={exporter.stamp} alt="Kaşe İmza" className="mix-blend-multiply opacity-95 object-contain" style={{ maxWidth: '190px', maxHeight: '80px' }} />
+                         )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* BOTTOM COMPANY INFO */}
+                  <div className="pt-1">
+                    <div className="w-full text-center text-[8.5px] bg-slate-200 border border-black py-1 px-2 font-bold text-black">
+                      {exporter?.name}<br/>
+                      <span className="font-normal text-[8px]">{exporter?.address} Tel: {exporter?.phone} Fax: {exporter?.fax}</span><br/>
+                      VAT ID No: {exporter?.vatNo}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* 3. İŞ EMRİ (Sevk Adresi ve Banka Bilgisi Kutusu Eklendi) */}
+              {activeTab === 'workOrder' && (
+                <div className="bg-white p-10 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page border border-slate-300" style={{ width: '210mm', minHeight: '287mm' }}>
+                  <div className="flex justify-between items-start mb-8">
+                    {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-24 max-w-[240px] object-contain" />}
+                    <div className="text-right">
+                      <p className="font-bold text-lg text-black">{exporter?.name}</p>
+                      <p className="text-xs text-slate-600 mt-1">İHRAÇ EDİLECEK MALLARIN GÜMRÜKLEMESİNE İLİŞKİN</p>
+                      <p className="font-black text-xl underline tracking-widest mt-2 text-black">İŞ EMRİ</p>
+                      <p className="mt-3 font-bold">{invoiceDate}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-[150px_10px_1fr] gap-y-4 text-[13px]">
+                    <div className="font-bold text-black">GÜMRÜKÇÜ</div><div>:</div>
+                    <div>
+                      <p className="font-bold text-black">SAYGILI GÜMRÜK MÜŞAVİRLİĞİ LTD. ŞTİ.</p>
+                      <p>SN. MURAT BEY</p>
+                    </div>
+
+                    <div className="font-bold text-black">ALICI FİRMA</div><div>:</div>
+                    <div>
+                      <p className="font-bold text-black">{customer?.name}</p>
+                      <p>{customer?.address}</p>
+                      <p className="font-bold mt-1 text-black">{customer?.country}</p>
+                    </div>
+
+                    <div className="font-bold text-black">Teslim Yeri</div><div>:</div>
+                    <div className="font-bold">
+                      {hasCustomDelivery ? (
+                        <div className="text-[#0052cc] whitespace-pre-line">{customDeliveryAddress}</div>
+                      ) : (
+                        <span className="text-black">{customer?.country}</span>
+                      )}
+                    </div>
+
+                    <div className="font-bold text-black">MALIN CİNSİ</div><div>:</div>
+                    <div>
+                      <p className="font-bold underline text-black">ÇELİK DÖKÜMDEN MAMÜL AŞINIR PARÇALAR</p>
+                      <p className="mt-1">{uniquePartNames}</p>
+                    </div>
+
+                    <div className="font-bold text-black">CIF MAL BEDELİ</div><div>:</div>
+                    <div className="flex justify-between w-4/5 font-bold">
+                      <span className="text-black">{totals?.totalTutar?.toLocaleString('tr-TR', {minimumFractionDigits:2})} {currency}</span>
+                      <span className="font-normal border-b border-black w-1/2 ml-4 flex justify-between"><span>NAKLİYECİ:</span> <span className="font-bold text-black">{transporter?.name}</span></span>
+                    </div>
+
+                    <div className="font-bold text-black">EKLİ EVRAKLAR</div><div>:</div>
+                    <div>
+                      <p>1. TÜRKÇE FATURA (4 SURET)</p>
+                      <p>2. ÇEKİ VE KOLİ LİSTESİ (4 SURET)</p>
+                      <p>3. A.TR BELGESİ</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 text-xs leading-relaxed">
+                    <p>1. GÜMRÜK BEYANNAMELERİ BU İŞ EMRİNDE VE EKİNDE GÖNDERİLEN BELGELERDE BELİRTİLEN DETAYLARA TAM MANASIYLA UYGUN OLARAK HAZIRLANACAKTIR.</p>
+                    <p className="mt-3">2. VASITAYA VERİLECEK BELGELER :</p>
+                    <div className="ml-10 mt-1">
+                      <p>a. A.TR BELGESİ</p>
+                      <p>b. İNGİLİZCE FATURA (1 SURET)</p>
+                      <p>c. ÇEKİ LİSTESİ (1 SURET)</p>
+                    </div>
+                    <p className="mt-3">3. TARAFIMIZA GÖNDERİLECEK BELGELER:</p>
+                    <div className="ml-10 mt-1">
+                      <p>a. GÜMRÜK BEYANNAMELERİ</p>
+                      <p>b. A.TR BELGESİ (SURET)</p>
+                    </div>
+                  </div>
+
+                  {/* Alt Bölüm: Banka Bilgisi Kutusu ve İmza/Kaşe (Örnek.pdf ile birebir) */}
+                  <div className="mt-10 flex justify-between items-start">
+                    {selectedBank ? (
+                      <div className="border-2 border-black p-3 text-center text-xs font-extrabold max-w-[300px]">
+                        <div className="text-black">BEYANNAMEYE BANKA BİLGİSİ OLARAK</div>
+                        <div className="text-[#c00000] my-1 text-sm">{selectedBank.bankName}</div>
+                        <div className="text-black">YAZILACAK</div>
+                      </div>
+                    ) : <div />}
+
+                    <div className="text-center font-bold pr-8 text-sm relative">
+                      <p className="uppercase">SAYGILARIMIZLA</p>
+                      <p className="text-black mt-1">{exporter?.name}</p>
+                      <div className="mt-2 relative min-h-[110px] min-w-[210px]">
+                        <StampImage className="top-0 left-0" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. NAKLİYE TALİMATI (Teslim Adresi Eklendi) */}
+              {activeTab === 'transport' && (
+                <div className="bg-white p-10 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page border border-slate-300" style={{ width: '210mm', minHeight: '287mm' }}>
+                  <div className="flex justify-between items-start mb-8">
+                    {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-24 max-w-[240px] object-contain" />}
+                    <div className="text-right">
+                      <p className="font-bold text-lg text-black">{exporter?.name}</p>
+                      <p className="font-black text-xl underline tracking-widest mt-3 text-black">NAKLİYE TALİMATI</p>
+                      <p className="mt-3 font-bold">{invoiceDate}</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <h2 className="text-lg font-bold text-black">{transporter?.name || 'NAKLİYECİ FİRMA'}</h2>
+                    <p>{transporter?.address}</p>
+                  </div>
+
+                  <p className="mb-4"><strong>Konu:</strong> {customer?.country || 'Yurtdışı'} tarafına sevk edilecek yükümüz hakkında.</p>
+                  <p className="mb-4">Aşağıda detayları verilen yükümüzün teslimat adresine sevk edilmesini rica ederiz.</p>
+
+                  <table className="w-full border-collapse border border-black mb-6 text-xs text-center">
+                    <thead>
+                      <tr className="bg-slate-100 font-bold">
+                        <th className="border border-black p-2 text-left">MALIN CİNSİ</th>
+                        <th className="border border-black p-2">AMBALAJ</th>
+                        <th className="border border-black p-2">NET AĞIRLIK</th>
+                        <th className="border border-black p-2">BRÜT AĞIRLIK</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border border-black p-3 text-left font-bold">
+                          ÇELİK DÖKÜMDEN MAMÜL AŞINIR PARÇALAR<br/>
+                          <span className="font-normal text-slate-700">{uniquePartNames}</span>
+                        </td>
+                        <td className="border border-black p-3 font-bold">{totals?.paletCount} Palet</td>
+                        <td className="border border-black p-3 font-bold">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
+                        <td className="border border-black p-3 font-bold">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={4} className="border border-black p-2 italic text-slate-700 text-left">
+                          <strong>Ebatlar:</strong> {palletSummary}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div className="grid grid-cols-[150px_10px_1fr] gap-y-3.5 text-xs">
+                    <div className="font-bold text-black">ALICI FİRMA</div><div>:</div>
+                    <div className="font-bold text-sm text-black">
+                      {customer?.name} <br/>
+                      <span className="font-normal text-slate-800">{customer?.address} {customer?.country}</span>
+                    </div>
+
+                    <div className="font-bold text-black">TESLİM ADRESİ</div><div>:</div>
+                    <div className="font-bold text-sm text-[#0052cc] whitespace-pre-line">
+                      {hasCustomDelivery ? customDeliveryAddress : `${customer?.name}\n${customer?.address} ${customer?.country}`}
+                    </div>
+
+                    <div className="font-bold text-black">İLETİŞİM BİLGİSİ</div><div>:</div>
+                    <div>
+                      {customer?.contacts?.map((c, i) => <span key={i}>{c.name} - {c.email}<br/></span>) || '-'}
+                    </div>
+
+                    <div className="font-bold text-black">TESLİM ŞEKLİ</div><div>:</div>
+                    <div className="font-bold text-sm text-[#0052cc]">{transporter?.deliveryTerm} {customer?.country}</div>
+                    
+                    <div className="font-bold text-black">GÜMRÜKLEME</div><div>:</div>
+                    <div className="font-bold text-black">SAYGILI GÜMRÜK MÜŞAVİRLİĞİ LTD. ŞTİ.</div>
+                  </div>
+
+                  <div className="mt-6 border-t border-black pt-4 text-xs leading-relaxed">
+                    <p><strong>Konşimento:</strong> 1 asıl 2 suret olarak düzenlenecek konşimento üzerinde FREIGHT PREPAID ve CLEAN on TRUCK, ve CMR Belgesinin ekli evraklar kutucuğunda ATR. 1 (original), packing list(copy), invoice(copy) ibareleri yer alacak ve 1 asıl, 1 suret konşimento tarafımıza gönderilecektir.</p>
+                    
+                    <div className="mt-6 font-bold relative inline-block text-sm">
+                      <p>Saygılarımızla,</p>
+                      <p className="mt-1 font-bold text-black">{exporter?.name}</p>
+                      <div className="mt-2 relative min-h-[110px] min-w-[220px]">
+                        <StampImage className="top-0 left-0" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 5. SİGORTA TALİMATI (Sevk Adresi Eklendi) */}
+              {activeTab === 'insurance' && (
+                <div className="bg-white p-10 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page border border-slate-300" style={{ width: '210mm', minHeight: '287mm' }}>
+                  <div className="flex justify-between items-start mb-6">
+                    {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-24 max-w-[240px] object-contain" />}
+                    <div className="text-right">
+                      <p className="font-bold text-lg text-black">{exporter?.name}</p>
+                      <p className="font-black text-xl underline tracking-widest mt-3 text-black">SİGORTA TALİMATI</p>
+                      <p className="mt-3 font-bold">{invoiceDate}</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-5 text-lg font-bold text-black">
+                    <h2>{selectedInsurance?.agencyName || 'Sigorta Acentesi Adı'}</h2>
+                    {selectedInsurance?.address && <p className="text-sm font-normal text-slate-700 mt-1">{selectedInsurance.address}</p>}
+                    <p className="text-sm font-normal mt-1">
+                      {selectedInsurance?.phone ? `Tel: ${selectedInsurance.phone}` : ''}
+                      {selectedInsurance?.phone && selectedInsurance?.email ? ' | ' : ''}
+                      {selectedInsurance?.email ? `E-posta: ${selectedInsurance.email}` : ''}
+                    </p>
+                  </div>
+
+                  <p className="mb-3 text-base"><strong>İlgi:</strong> Nakliye Sigortası</p>
+                  <p className="mb-5 leading-relaxed">
+                    <strong>{transporter?.name}</strong> şirketi ile <strong>{customer?.country}</strong> adresine sevk edeceğimiz aşağıda detayları verilen malımızın nakliye sigortasının yapılmasını, sigorta poliçesinin ve orjinal suretlerinin tarafımıza verilmesini rica ederiz.
+                  </p>
+
+                  <div className="border border-black rounded p-5 bg-slate-50 mb-5 grid grid-cols-[180px_10px_1fr] gap-y-3 text-[13px]">
+                    <div className="font-bold text-black">MALIN CİNSİ</div><div>:</div>
+                    <div className="font-bold text-black">ÇELİK DÖKÜMDEN MAMÜL AŞINIR PARÇALAR <br/><span className="font-normal text-xs">{uniquePartNames}</span></div>
+
+                    <div className="font-bold text-black">MALIN MİKTARI</div><div>:</div>
+                    <div><strong>{totals?.paletCount} Palet / {totals?.totalAdet} Adet</strong> (Net: {totals?.totalNetKg} KG - Brüt: {totals?.totalBrutKg} KG)</div>
+
+                    <div className="font-bold text-[#0052cc]">SİGORTALANACAK BEDEL</div><div>:</div>
+                    <div className="font-bold text-base text-[#0052cc]">{totals?.totalTutar?.toLocaleString('tr-TR', {minimumFractionDigits:2})} {currency}</div>
+
+                    <div className="font-bold text-black">SİGORTALI FİRMA</div><div>:</div>
+                    <div className="font-bold text-black">{exporter?.name} <br/><span className="font-normal text-xs">{exporter?.address}</span></div>
+
+                    <div className="font-bold text-black">ALICI FİRMA</div><div>:</div>
+                    <div className="font-bold text-black">{customer?.name} <br/><span className="font-normal text-xs">{customer?.address} {customer?.country}</span></div>
+
+                    <div className="font-bold text-black">SEVK ADRESİ</div><div>:</div>
+                    <div className="font-bold text-[#0052cc] whitespace-pre-line">
+                      {hasCustomDelivery ? customDeliveryAddress : `${customer?.name} - ${customer?.address} ${customer?.country}`}
+                    </div>
+                    
+                    <div className="font-bold text-black">SATIŞ ŞEKLİ</div><div>:</div>
+                    <div className="font-bold text-black">{transporter?.deliveryTerm} {customer?.country}</div>
+                  </div>
+
+                  <div className="bg-red-50 text-[#c00000] p-3 border border-[#c00000] rounded text-xs font-bold">
+                    NOT: Mallar %110 olarak sigortalanacak ve ekteki örneğe uygun olarak İngilizce Poliçe düzenlenecektir. POLİÇENİN ACİLEN TARAFIMIZA GÖNDERİLMESİNİ RİCA EDERİZ.
+                  </div>
+                  
+                  <div className="mt-6 font-bold relative inline-block">
+                    <p>Saygılarımızla,</p>
+                    <p className="mt-1 text-sm font-bold text-black">{exporter?.name}</p>
+                    <div className="mt-2 relative min-h-[110px] min-w-[220px]">
+                      <StampImage className="top-0 left-0" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 6. A.TR BELGESİ (Kutu 3 İçine Delivery Address Eklendi) */}
+              {activeTab === 'atr' && (
+                <div className="bg-white p-5 mx-auto w-full shadow-lg text-xs relative print-page flex flex-col font-sans text-black border border-slate-300" style={{ width: '210mm', minHeight: '287mm' }}>
+                  
+                  <div className="border-2 border-black flex-1 flex flex-col relative">
+                    
+                    {/* Row 1 (Boxes 1 & 2) */}
+                    <div className="flex border-b-2 border-black min-h-[125px]">
+                      <div className="w-1/2 border-r-2 border-black p-2 flex flex-col">
+                        <span className="font-bold text-[10px]">1 Exporter (Name, full address, country)</span>
+                        <div className="mt-1 flex-1 font-bold text-xs leading-snug">
+                          {exporter?.name}<br/>
+                          {exporter?.address}<br/>
+                          TÜRKİYE TR
+                        </div>
+                      </div>
+                      
+                      <div className="w-1/2 flex flex-col">
+                        <div className="flex border-b-2 border-black">
+                           <div className="w-1/2 p-2 font-bold text-2xl tracking-widest border-r-2 border-black flex flex-col justify-center">
+                             <span>A.TR</span>
+                             <span className="text-[8.5px] font-normal tracking-normal leading-tight mt-0.5">MOVEMENT CERTIFICATE</span>
+                           </div>
+                           <div className="w-1/2 p-2">
+                             <div className="border border-black p-1 text-[10px] text-right font-bold">No. A 0000000</div>
+                           </div>
+                        </div>
+                        <div className="flex-1 p-2 text-center flex items-center justify-center font-bold text-[11px] uppercase tracking-wide leading-tight">
+                          ASSOCIATION BETWEEN THE<br/>EUROPEAN ECONOMIC COMMUNITY<br/>AND TURKEY
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Row 2 (Boxes 3, 4, 5, 6) */}
+                    <div className="flex border-b-2 border-black min-h-[115px]">
+                      <div className="w-1/2 border-r-2 border-black p-2 flex flex-col justify-between">
+                        <div>
+                          <span className="font-bold text-[10px]">3 Consignee (Name, full address, country)</span>
+                          <div className="mt-1 font-bold text-xs leading-snug">
+                            {customer?.name}<br/>
+                            {customer?.address}<br/>
+                            {customer?.country}
+                          </div>
+                        </div>
+                        {hasCustomDelivery && (
+                          <div className="mt-1.5 pt-1 border-t border-slate-300 text-[10px] leading-tight">
+                            <span className="font-black text-[#c00000] uppercase">DELIVERY ADDRESS: </span>
+                            <span className="font-bold text-[#0052cc] whitespace-pre-line">{customDeliveryAddress}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="w-1/2 flex flex-col">
+                         <div className="border-b-2 border-black p-1.5 flex-1">
+                           <span className="font-bold text-[10px]">4 Association concerning</span>
+                           <div className="mt-1 text-center text-xs font-bold">EEC - TURKEY</div>
+                         </div>
+                         <div className="flex flex-1">
+                           <div className="w-1/2 border-r-2 border-black p-1.5">
+                             <span className="font-bold text-[10px]">5 Country of export</span>
+                             <div className="mt-1 font-bold text-xs text-center">TÜRKİYE</div>
+                           </div>
+                           <div className="w-1/2 p-1.5">
+                             <span className="font-bold text-[10px]">6 Country of destination</span>
+                             <div className="mt-1 font-bold text-xs text-center">{customer?.country}</div>
+                           </div>
+                         </div>
+                      </div>
+                    </div>
+
+                    {/* Row 3 (Boxes 7 & 8) */}
+                    <div className="flex border-b-2 border-black min-h-[65px]">
+                      <div className="w-1/2 border-r-2 border-black p-2">
+                        <span className="font-bold text-[10px]">7 Transport details (Optional)</span>
+                        <div className="mt-1 font-semibold">{transporter?.transportType} / {transporter?.deliveryTerm}</div>
+                      </div>
+                      <div className="w-1/2 p-2">
+                        <span className="font-bold text-[10px]">8 Remarks</span>
+                        <div className="mt-1 font-bold text-xs">INVOICE NO: {checklist?.invoiceNumber}</div>
+                      </div>
+                    </div>
+
+                    {/* Row 4 (Items Section Header - Box 9, 10, 11) */}
+                    <div className="flex flex-col flex-1 border-b-2 border-black relative min-h-[340px]">
+                       <div className="flex font-bold text-[9.5px] border-b border-black">
+                         <div className="w-[10%] p-1 border-r border-black text-center">9 Item<br/>number</div>
+                         <div className="w-[60%] p-1 border-r border-black">10 Marks and numbers; Number and kind of packages; Description of goods</div>
+                         <div className="w-[15%] p-1 border-r border-black text-center">11 Gross weight<br/>(kg) or other measure</div>
+                         <div className="w-[15%] p-1 text-center">Customs document</div>
+                       </div>
+                       
+                       <div className="flex flex-1 p-2">
+                         <div className="w-[10%] text-center font-bold">1</div>
+                         <div className="w-[60%] px-3 text-xs leading-snug">
+                            <div className="font-bold text-xs mb-1">{totals?.paletCount} PALLETS</div>
+                            <div className="font-normal text-xs uppercase tracking-tight mb-0.5">
+                              ÇELİK DÖKÜMDEN MAMÜL AŞINIR PARÇALAR
+                            </div>
+                            <div className="font-extrabold text-[11px] uppercase mb-1.5">
+                              {uniquePartNames || 'STEEL CASTING PARTS'}
+                            </div>
+                            <div className="space-y-0.5 text-[10px] font-normal text-black">
+                              {items.map((item, idx) => {
+                                const leftPart = [item.resimNo, item.parcaAdi].filter(Boolean).join(' - ');
+                                return (
+                                  <div key={idx} className="flex items-center gap-3">
+                                    <span>{leftPart} -</span>
+                                    <span className="font-semibold">{item.adet}.-Ad</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                         </div>
+                         <div className="w-[15%] text-center font-bold text-xs">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</div>
+                         <div className="w-[15%] text-center"></div>
+                       </div>  
+                    </div>
+
+                    {/* Row 5 (Box 12 & 13) */}
+                    <div className="flex min-h-[195px]">
+                      <div className="w-1/2 border-r-2 border-black p-2 flex flex-col">
+                        <span className="font-bold text-[10px]">12 CUSTOMS ENDORSEMENT</span>
+                        <div className="text-[9.5px] mt-1 mb-3 leading-tight">
+                          Declaration certified<br/>
+                          Export document:<br/>
+                          Form: ................................ No: .................................<br/>
+                          Customs office: ...........................................................<br/>
+                          Issuing country: ..........................................................
+                        </div>
+                        <div className="mt-auto flex justify-between items-end pb-1">
+                          <div><span className="text-[9.5px]">Place and date:</span></div>
+                          <div className="text-center w-24 border-t border-black text-[9.5px]">Signature</div>
+                          <div className="text-center w-16 h-16 border border-black rounded-full flex items-center justify-center text-[9.5px]">Stamp</div>
+                        </div>
+                      </div>
+
+                      <div className="w-1/2 p-2 flex flex-col relative">
+                        <span className="font-bold text-[10px]">13 DECLARATION BY THE EXPORTER</span>
+                        <div className="text-[9.5px] mt-1 leading-tight text-center">
+                          I, the undersigned, declare that the goods described above meet the conditions required for the issue of this certificate.
+                        </div>
+                        
+                        <div className="mt-auto flex flex-col items-center justify-end pb-3 pt-8">
+                          <span className="text-[9.5px] text-left w-full mb-6">Place and date: {exporter?.address?.split(' ')[0] || 'TÜRKİYE'} / {invoiceDate}</span>
+                          <span className="w-44 border-t border-black text-center text-[9.5px] pt-1">Signature</span>
+                          <StampImage className="bottom-8 right-8 !max-w-[170px] !max-h-[105px]" />
+                        </div>
+                      </div>
+                    </div>
+                    
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function PrintModal({ checklist, exporter, customer, transporter, onClose }) {
+      const items = checklist?.items || [];
+      const processedRows = useMemo(() => processTableRows(items), [items]);
+      const totals = useMemo(() => calculateTotals(items, processedRows), [items, processedRows]);
+      const currency = checklist?.currency || 'EUR';
+      const formattedDate = formatDateTR(checklist?.checklistDate || (checklist?.createdAt ? new Date(checklist.createdAt).toLocaleDateString('tr-TR') : ''));
+
+      return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto print-modal-wrapper">
+          {/* Sadece bu modal açıkken yazdırma yönünü A4 Yatay (Landscape) yapar */}
+          <style>{`@media print { @page { size: A4 landscape !important; margin: 5mm !important; } }`}</style>
+          <div className="bg-white rounded-xl shadow-2xl max-w-[1200px] w-full p-8 max-h-[92vh] overflow-y-auto print-container print-modal-inner">
+            <div className="no-print flex justify-between items-center border-b pb-4 mb-6">
+              <div className="flex items-center gap-2">
+                <Printer className="text-emerald-600" />
+                <h3 className="text-lg font-bold text-slate-800">Yazdırma Önizleme (Çeki Listesi / Packing List - A4 Yatay)</h3>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-bold flex items-center shadow-md">
+                  <Printer size={18} className="mr-2" /> Yazdır (A4 Yatay)
+                </button>
+                <button type="button" onClick={onClose} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium">Kapat</button>
+              </div>
+            </div>
+
+            <div className="text-black bg-white p-2 print-page-landscape">
+              <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-5">
+                <div className="flex items-start gap-4">
+                  {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-w-[220px] object-contain rounded border p-1" />}
+                  <div>
+                    <h1 className="text-2xl font-black uppercase tracking-tight text-black">{exporter?.name || 'İHRACATÇI FİRMA UNVANI'}</h1>
+                    <p className="text-xs text-slate-700 mt-0.5">{exporter?.address}</p>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      {exporter?.phone ? `Tel: ${exporter.phone}` : ''} {exporter?.email ? `| Mail: ${exporter.email}` : ''}
+                    </p>
+                    <p className="text-xs font-semibold text-black mt-0.5">
+                      VAT ID: {exporter?.vatNo || '-'} | DUNS: {exporter?.dunsNumber || '-'} | EORI: {exporter?.eoriNumber || '-'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div className="inline-block bg-slate-900 text-white px-4 py-1.5 rounded text-sm font-extrabold tracking-wider uppercase mb-2">
+                    PACKING LIST / ÇEKİ LİSTESİ
+                  </div>
+                  <p className="text-xs text-slate-700"><strong>Fatura No:</strong> <span className="text-black font-bold">{checklist?.invoiceNumber || '-'}</span></p>
+                  <p className="text-xs text-slate-700"><strong>Tarih:</strong> {formattedDate || '-'}</p>
+                  <p className="text-xs text-slate-700"><strong>Döviz Birimi:</strong> <span className="font-bold text-black">{currency}</span></p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 text-xs mb-5">
+                <div className="border border-black p-3 rounded bg-white flex justify-between items-start">
+                  <div>
+                    <p className="font-bold text-black border-b border-slate-300 pb-1 mb-1.5 uppercase tracking-wide text-[11px]">
+                      CONSIGNEE / MÜŞTERİ BİLGİLERİ
+                    </p>
+                    <p className="font-bold text-sm text-black">{customer?.name || '-'}</p>
+                    <p className="text-slate-800 mt-1">{customer?.address || checklist?.deliveryAddress || '-'}</p>
+                    <p className="text-slate-700 mt-1">Ülke: {customer?.country || '-'}</p>
+                    <p className="text-slate-700">VAT No: {customer?.vatNo || '-'}</p>
+                  </div>
+                  {customer?.logo && <img src={customer.logo} alt="Customer Logo" className="h-14 max-w-[120px] object-contain ml-2" />}
+                </div>
+
+                <div className="border border-black p-3 rounded bg-white">
+                  <p className="font-bold text-black border-b border-slate-300 pb-1 mb-1.5 uppercase tracking-wide text-[11px]">
+                    CARRIER / NAKLİYECİ BİLGİLERİ
+                  </p>
+                  <p className="font-bold text-sm text-black">{transporter?.name || '-'}</p>
+                  <p className="text-slate-800 mt-1">{transporter?.address || '-'}</p>
+                  <p className="text-slate-700 mt-1"><strong>Teslim Şekli:</strong> {transporter?.deliveryTerm || '-'}</p>
+                  <p className="text-slate-700"><strong>Taşımacılık:</strong> {transporter?.transportType || '-'}</p>
+                </div>
+
+                <div className="border border-black p-3 rounded bg-white">
+                  <p className="font-bold text-black border-b border-slate-300 pb-1 mb-1.5 uppercase tracking-wide text-[11px]">
+                    SHIPMENT / SEVK DETAYLARI
+                  </p>
+                  <p className="text-black"><strong>Sevk Adresi:</strong> {checklist?.deliveryAddress || customer?.address || '-'}</p>
+                  <p className="text-black mt-1"><strong>Toplam Kalem:</strong> {items.length} Kalem</p>
+                  <p className="text-black"><strong>Toplam Palet:</strong> {totals?.paletCount || 0} Palet</p>
+                  <p className="text-black"><strong>Toplam Brüt KG:</strong> {totals?.totalBrutKg ? totals.totalBrutKg.toLocaleString('tr-TR') : 0} KG</p>
+                </div>
+              </div>
+
+              <table className="w-full text-left text-xs border-collapse border border-black mb-5">
+                <thead>
+                  <tr className="bg-slate-900 text-white font-bold text-[11px] uppercase tracking-wider">
+                    <th className="border border-black p-2 text-center w-8">Sıra</th>
+                    <th className="border border-black p-2">Parça Adı</th>
+                    <th className="border border-black p-2">Sip. Ref No</th>
+                    <th className="border border-black p-2">Pos / Resim</th>
+                    <th className="border border-black p-2 text-right">Adet</th>
+                    <th className="border border-black p-2 text-right">Fiyat ({currency})</th>
+                    <th className="border border-black p-2 text-right">Tutar ({currency})</th>
+                    <th className="border border-black p-2 text-right">Net KG</th>
+                    <th className="border border-black p-2 text-right">Brüt KG</th>
+                    <th className="border border-black p-2 text-center">Palet No</th>
+                    <th className="border border-black p-2">Palet Ebatları</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {processedRows.map((rowInfo, idx) => {
+                    const item = rowInfo.item;
+                    const adet = parseFloat(item.adet) || 0;
+                    const fiyat = parseFloat(item.fiyat) || 0;
+                    const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
+                    const rowBg = rowInfo.groupColor || 'bg-white';
+
+                    return (
+                      <tr key={idx} className={`border-b border-slate-400 ${rowBg}`}>
+                        <td className="border border-black p-1.5 text-center font-medium">{item.siraNo || idx + 1}</td>
+                        <td className="border border-black p-1.5 font-bold text-black">{item.parcaAdi || '-'}</td>
+                        <td className="border border-black p-1.5 font-mono text-[11px] text-slate-800">{item.sipRefNo || '-'}</td>
+                        <td className="border border-black p-1.5 text-slate-800">
+                          {[item.posNo, item.resimNo].filter(Boolean).join(' / ') || '-'}
+                        </td>
+                        <td className="border border-black p-1.5 text-right font-extrabold text-black">{item.adet || '-'}</td>
+                        <td className="border border-black p-1.5 text-right text-slate-800">
+                          {fiyat ? fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+                        </td>
+                        <td className="border border-black p-1.5 text-right font-extrabold text-black">
+                          {tutar ? tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+                        </td>
+                        <td className="border border-black p-1.5 text-right font-semibold text-black">{item.netKg || '-'}</td>
+
+                        {rowInfo.isFirstInGroup && (
+                          <>
+                            <td rowSpan={rowInfo.rowSpan} className={`border border-black p-1.5 text-right font-extrabold text-black align-middle ${rowBg}`}>
+                              {item.brutKg || '-'}
+                            </td>
+                            <td rowSpan={rowInfo.rowSpan} className={`border border-black p-1.5 text-center font-extrabold text-blue-900 align-middle ${rowBg}`}>
+                              {item.paletNo || '-'}
+                            </td>
+                            <td rowSpan={rowInfo.rowSpan} className={`border border-black p-1.5 text-black align-middle ${rowBg}`}>
+                              {item.paletEbatlari || '-'}
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+
+                <tfoot className="bg-slate-200 text-black font-bold border-t-2 border-black text-xs">
+                  <tr>
+                    <td colSpan={4} className="border border-black p-2 text-right uppercase tracking-wider font-extrabold bg-slate-300">
+                      GENEL TOPLAM / TOTALS:
+                    </td>
+                    <td className="border border-black p-2 text-right font-extrabold text-black">
+                      {totals?.totalAdet ? totals.totalAdet.toLocaleString('tr-TR') : 0}
+                    </td>
+                    <td className="border border-black p-2"></td>
+                    <td className="border border-black p-2 text-right font-extrabold text-black">
+                      {totals?.totalTutar ? totals.totalTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 0} {currency}
+                    </td>
+                    <td className="border border-black p-2 text-right font-extrabold text-black">
+                      {totals?.totalNetKg ? totals.totalNetKg.toLocaleString('tr-TR') : 0} KG
+                    </td>
+                    <td className="border border-black p-2 text-right font-extrabold text-black bg-slate-300">
+                      {totals?.totalBrutKg ? totals.totalBrutKg.toLocaleString('tr-TR') : 0} KG
+                    </td>
+                    <td className="border border-black p-2 text-center font-extrabold text-blue-900 bg-slate-300">
+                      {totals?.paletCount || 0} Palet
+                    </td>
+                    <td className="border border-black p-2"></td>
+                  </tr>
+                </tfoot>
+              </table>
+              <div className="grid grid-cols-3 gap-6 text-xs text-center mt-10 pt-6 border-t border-black relative">
+                <div className="border border-black p-4 rounded bg-white relative">
+                  <p className="font-bold text-black mb-8 z-10 relative">TESLİM EDEN / EXPORTER</p>
+                  <p className="text-[10px] text-slate-600 mb-1 z-10 relative">İmza & Kaşe</p>
+                  <p className="border-b border-dashed border-black w-3/4 mx-auto z-10 relative"></p>
+                  {exporter?.stamp && <img src={exporter.stamp} className="absolute inset-0 m-auto mix-blend-multiply opacity-80" style={{ maxWidth: '80%', maxHeight: '80%' }} />}
+                </div>
+                <div className="border border-black p-4 rounded bg-white">
+                  <p className="font-bold text-black mb-8">TAŞIYICI / CARRIER</p>
+                  <p className="text-[10px] text-slate-600 mb-1">İmza & Kaşe</p>
+                  <p className="border-b border-dashed border-black w-3/4 mx-auto"></p>
+                </div>
+                <div className="border border-black p-4 rounded bg-white">
+                  <p className="font-bold text-black mb-8">TESLİM ALAN / CONSIGNEE</p>
+                  <p className="text-[10px] text-slate-600 mb-1">İmza & Kaşe</p>
+                  <p className="border-b border-dashed border-black w-3/4 mx-auto"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<ExportManagementApp />);
+  </script>
+</body>
+</html>
