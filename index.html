@@ -161,14 +161,14 @@
     // =========================================================================
     // FIREBASE YAPILANDIRMASI (Kendi Firebase Console bilgilerinizi buraya girin)
     // =========================================================================
-    const FIREBASE_CONFIG = {
-      apiKey: "BURAYA_API_KEY_YAZIN",
-      authDomain: "BURAYA_PROJE_ID.firebaseapp.com",
-      projectId: "BURAYA_PROJE_ID",
-      storageBucket: "BURAYA_PROJE_ID.appspot.com",
-      messagingSenderId: "BURAYA_SENDER_ID",
-      appId: "BURAYA_APP_ID"
-    };
+    const firebaseConfig = {
+  apiKey: "AIzaSyAtSZX9jA8rWoVqnuBWnG1s1kru4PbdLyE",
+  authDomain: "ihracat-sistemi.firebaseapp.com",
+  projectId: "ihracat-sistemi",
+  storageBucket: "ihracat-sistemi.firebasestorage.app",
+  messagingSenderId: "348957927982",
+  appId: "1:348957927982:web:fae3ba60df83b0c1cb8dbf"
+};
 
     const isFirebaseConfigured = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.includes("BURAYA_");
     let auth = null;
