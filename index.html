@@ -81,10 +81,11 @@
         box-shadow: none !important;
         border: none !important;
         margin: 0 auto !important;
-        padding: 3mm 4mm !important;
+        padding: 4mm 5mm !important;
         width: 200mm !important;
         max-width: 200mm !important;
-        min-height: 284mm !important;
+        height: 287mm !important;
+        min-height: 287mm !important;
         page-break-after: always;
         page-break-inside: avoid;
         box-sizing: border-box !important;
@@ -2207,10 +2208,8 @@
       const formattedDeliveryDate = formatDateTR(deliveryDate);
       const hasCustomDelivery = Boolean(customDeliveryAddress && customDeliveryAddress.trim() !== '');
 
-      // Resim numarasının sonundaki gereksiz tireleri temizleyen yardımcı fonksiyon
       const cleanDrawingNo = (str) => String(str || '').replace(/[-–—\s]+$/, '').trim();
 
-      // İhracatçı adresinden şehir adını (Örn: KOCAELİ) doğru çıkaran yardımcı fonksiyon
       const exporterCity = useMemo(() => {
         if (!exporter?.address) return 'TÜRKİYE';
         const parts = exporter.address.split(/[-/,]/).map(s => s.trim()).filter(Boolean);
@@ -2229,45 +2228,30 @@
       const selectedBank = exporter?.banks?.find(b => b.id === checklist?.selectedBankId) || exporter?.banks?.filter(b => b.currency === currency)[0] || exporter?.banks?.[0];
       const selectedInsurance = exporter?.insurances?.find(i => i.id === checklist?.selectedInsuranceId) || exporter?.insurances?.[0];
 
-      // Kalem sayısına göre (Az satırlı vs Çok satırlı) dinamik A4 ölçeklendirme
-      const isFewRows = items.length <= 6;
-      const isMediumRows = items.length > 6 && items.length <= 16;
-      const isCompact = items.length > 16;
-      const isUltraCompact = items.length > 24;
+      // Kısa ve Uzun listeler için dinamik satır yüksekliği ve yazı boyutu
+      const isFewRows = items.length <= 10;
+      const isMediumRows = items.length > 10 && items.length <= 18;
+      const isCompact = items.length > 18;
+      const isUltraCompact = items.length > 25;
 
-      const rowPadding = isUltraCompact
-        ? 'py-[1.5px] px-1.5'
+      const invRowPad = isUltraCompact
+        ? 'py-[2px] px-1.5 text-[8.5px]'
         : isCompact
-        ? 'py-[2.5px] px-2'
-        : isFewRows
-        ? 'py-2 px-2'
-        : 'py-1 px-2';
-
-      const packingRowPadding = isUltraCompact
-        ? 'py-[1.5px] px-1.5'
-        : isCompact
-        ? 'py-[2.5px] px-2'
-        : isFewRows
-        ? 'py-2.5 px-2'
-        : 'py-1 px-2';
-
-      const tableFontSize = isUltraCompact
-        ? 'text-[8.5px]'
-        : isCompact
-        ? 'text-[9px]'
-        : isFewRows
-        ? 'text-[10.5px]'
-        : 'text-[9.5px]';
-
-      const fillerHeight = isFewRows
-        ? Math.max(130, 240 - items.length * 30)
+        ? 'py-[3px] px-2 text-[9px]'
         : isMediumRows
-        ? Math.max(30, 190 - items.length * 20)
-        : 0;
+        ? 'py-1 px-2 text-[9.5px]'
+        : 'py-1.5 px-2.5 text-[10px]';
 
-      const packingFillerHeight = isFewRows
-        ? Math.max(70, 160 - items.length * 28)
-        : 0;
+      const packRowPad = isUltraCompact
+        ? 'py-[2px] px-1.5 text-[8.5px]'
+        : isCompact
+        ? 'py-[3px] px-2 text-[9px]'
+        : isMediumRows
+        ? 'py-1.5 px-2 text-[9.5px]'
+        : 'py-2 px-2.5 text-[10px]';
+
+      // Kısa faturalarda ekstra boş zebra satırları (İnvoice.jpg görünümü için)
+      const emptyZebraCount = isFewRows ? Math.max(0, 9 - items.length) : 0;
 
       const tabs = [
         { id: 'invoice', label: 'Invoice' },
@@ -2278,7 +2262,7 @@
         { id: 'atr', label: 'A.TR Belgesi' }
       ];
 
-      const StampImage = ({ className, maxW = '200px', maxH = '100px' }) => {
+      const StampImage = ({ className = '', maxW = '200px', maxH = '100px' }) => {
         if (!showStamp || !exporter?.stamp) return null;
         return (
           <img
@@ -2380,109 +2364,119 @@
             {/* Document Render Area */}
             <div className="flex-1 overflow-y-auto bg-slate-300 p-6 print-container">
               
-              {/* 1. INVOICE */}
+              {/* ========================================================================= */}
+              {/* 1. INVOICE (İnvoice.jpg ile Birebir Kurumsal Tasarım + Kısa/Uzun A4 Uyumlu) */}
+              {/* ========================================================================= */}
               {activeTab === 'invoice' && (
-                <div className="bg-white p-5 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', minHeight: '285mm' }}>
+                <div className="bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
                   
-                  <div>
-                    {/* TOP: Centered Logo */}
+                  {/* ÜST BÖLÜM: Logo, Firma Bilgileri ve Müşteri / Invoice Kutuları */}
+                  <div className="shrink-0">
                     <div className="flex flex-col items-center mb-2">
                       {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-w-[240px] object-contain" />}
                     </div>
                     
-                    {/* EXPORTER DETAILS */}
-                    <div className="text-[9.5px] mb-3">
-                       <div className="font-extrabold mb-1 text-[10.5px] text-black">{exporter?.address}</div>
-                       <div className="grid grid-cols-[62px_135px_95px_1fr] gap-x-2 gap-y-0.5 max-w-md items-center">
-                          <div className="text-[#0052cc] font-bold whitespace-nowrap">Tel:</div>
-                          <div className="font-semibold text-black whitespace-nowrap">{exporter?.phone}</div>
-                          <div className="text-[#0052cc] font-bold whitespace-nowrap">D-U-N-S ® Number:</div>
-                          <div className="font-semibold text-black whitespace-nowrap">{exporter?.dunsNumber}</div>
+                    <div className="text-[10px] mb-3">
+                       <div className="font-extrabold mb-1 text-[11px] text-black">{exporter?.address}</div>
+                       <div className="grid grid-cols-[65px_145px_100px_1fr] gap-x-2 gap-y-0.5 max-w-lg items-center">
+                          <div className="text-[#0047b3] font-bold whitespace-nowrap">Tel:</div>
+                          <div className="font-medium text-black whitespace-nowrap">{exporter?.phone}</div>
+                          <div className="text-[#0047b3] font-bold whitespace-nowrap">D-U-N-S ® Number:</div>
+                          <div className="font-medium text-black whitespace-nowrap">{exporter?.dunsNumber}</div>
                           
-                          <div className="text-[#0052cc] font-bold whitespace-nowrap">Fax:</div>
-                          <div className="font-semibold text-black whitespace-nowrap">{exporter?.fax}</div>
-                          <div className="text-[#0052cc] font-bold whitespace-nowrap">EORI Number:</div>
-                          <div className="font-semibold text-black whitespace-nowrap">{exporter?.eoriNumber}</div>
+                          <div className="text-[#0047b3] font-bold whitespace-nowrap">Fax:</div>
+                          <div className="font-medium text-black whitespace-nowrap">{exporter?.fax}</div>
+                          <div className="text-[#0047b3] font-bold whitespace-nowrap">EORI Number:</div>
+                          <div className="font-medium text-black whitespace-nowrap">{exporter?.eoriNumber}</div>
                           
-                          <div className="text-[#0052cc] font-bold whitespace-nowrap">VAT ID No:</div>
+                          <div className="text-[#0047b3] font-bold whitespace-nowrap">VAT ID No:</div>
                           <div className="font-extrabold text-black whitespace-nowrap col-span-3">{exporter?.vatNo}</div>
                        </div>
                     </div>
 
-                    {/* CONSIGNEE & INVOICE BANNER */}
-                    <div className="flex justify-between items-stretch mb-2.5 gap-3">
+                    {/* CONSIGNEE & INVOICE BANNER (İnvoice.jpg gibi Yuvarlatılmış Köşeli) */}
+                    <div className="flex justify-between items-stretch mb-3 gap-4">
                        {/* CONSIGNEE BOX */}
-                       <div className="border-[1.5px] border-black p-2.5 w-[58%] min-h-[96px] text-[10px] flex flex-col justify-between bg-white">
+                       <div className="border border-slate-300 rounded-xl p-3.5 w-[57%] min-h-[104px] text-[10.5px] flex flex-col justify-between bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
                          <div>
-                           <div className="font-black text-[12.5px] uppercase text-black leading-snug">{customer?.name}</div>
-                           <div className="mt-0.5 text-black font-medium leading-snug">{customer?.address}</div>
+                           <div className="font-black text-[13.5px] uppercase text-black leading-snug">{customer?.name}</div>
+                           <div className="mt-0.5 text-black leading-snug">{customer?.address}</div>
                            <div className="font-extrabold mt-0.5 uppercase text-black">{customer?.country}</div>
                          </div>
 
-                         <div className="flex justify-between items-end pt-1.5 mt-1 border-t border-slate-200">
+                         <div className="flex justify-between items-end pt-2 mt-2 border-t border-slate-200">
                            {hasCustomDelivery ? (
                              <div className="text-[9px] leading-tight pr-2">
-                               <div className="text-[#c00000] font-black uppercase tracking-wide">DELIVERY ADDRESS:</div>
-                               <div className="text-[#0052cc] font-bold mt-0.5 whitespace-pre-line">{customDeliveryAddress}</div>
+                               <span className="text-[#a80000] font-black uppercase tracking-wide">DELIVERY ADDRESS: </span>
+                               <span className="text-[#0047b3] font-bold whitespace-pre-line">{customDeliveryAddress}</span>
                              </div>
                            ) : <div />}
-                           <div className="text-right font-extrabold text-black text-[10px] whitespace-nowrap ml-auto">
+                           <div className="text-right font-extrabold text-black text-[10.5px] whitespace-nowrap ml-auto">
                              VAT ID: {customer?.vatNo}
                            </div>
                          </div>
                        </div>
 
                        {/* INVOICE BANNER & INFO */}
-                       <div className="w-[40%] relative flex flex-col justify-between">
-                         <StampImage className="absolute -top-[72px] left-1/2 -translate-x-1/2 z-20" maxW="175px" maxH="82px" />
+                       <div className="w-[41%] relative flex flex-col justify-between">
+                         <StampImage className="absolute -top-[68px] left-1/2 -translate-x-1/2 z-20" maxW="185px" maxH="82px" />
                          
-                         <div className="bg-[#c00000] text-white text-center font-black text-lg py-1 border-[1.5px] border-black uppercase tracking-widest">
+                         <div className="bg-[#a80000] text-white text-center font-black text-lg py-1.5 rounded-lg uppercase tracking-widest shadow-sm">
                            INVOICE
                          </div>
-                         <div className="border-[1.5px] border-black bg-white px-2.5 py-1.5 flex-1 flex flex-col justify-center mt-1.5">
-                           <div className="grid grid-cols-[95px_1fr] text-[9.5px] gap-y-1 font-bold">
-                             <div className="text-black">Delivery Date</div>
-                             <div className="text-right text-black font-extrabold">{formattedDeliveryDate}</div>
-                             <div className="text-black">Date of invoice</div>
-                             <div className="text-right text-black font-extrabold">{invoiceDate}</div>
-                             <div className="text-black">Invoice Number</div>
-                             <div className="text-right text-black font-black">{checklist?.invoiceNumber}</div>
+                         <div className="border border-slate-300 rounded-xl bg-white px-3.5 py-2 flex-1 flex flex-col justify-center mt-2">
+                           <div className="text-[10px] font-bold divide-y divide-slate-200">
+                             <div className="flex justify-between py-1">
+                               <span className="text-black font-bold">Delivery Date</span>
+                               <span className="text-right text-black font-extrabold">{formattedDeliveryDate}</span>
+                             </div>
+                             <div className="flex justify-between py-1">
+                               <span className="text-black font-bold">Date of Invoice</span>
+                               <span className="text-right text-black font-extrabold">{invoiceDate}</span>
+                             </div>
+                             <div className="flex justify-between py-1">
+                               <span className="text-black font-bold">Invoice Number</span>
+                               <span className="text-right text-black font-black">{checklist?.invoiceNumber}</span>
+                             </div>
                            </div>
                          </div>
                        </div>
                     </div>
+                  </div>
 
-                    {/* TABLE & BOTTOM SECTION: Tek Colgroup Hizasıyla Milimetrik Çizgi Bütünlüğü */}
-                    <table className={`w-full text-left ${tableFontSize} border-collapse border-[1.5px] border-black mb-0`} style={{tableLayout: 'fixed'}}>
+                  {/* ORTA & ALT ENTEGRE TABLO BLOĞU (Kısa ve Uzun Faturalarda A4'ü Tam Doldurur) */}
+                  <div className="flex-1 flex flex-col border border-slate-300 rounded-t-xl overflow-hidden">
+                    {/* ÜRÜN TABLOSU */}
+                    <table className="w-full text-left border-collapse" style={{tableLayout: 'fixed'}}>
                       <colgroup>
                         <col className="w-[14.5%]" />
-                        <col className="w-[5%]" />
-                        <col className="w-[26.5%]" />
+                        <col className="w-[5.5%]" />
+                        <col className="w-[26%]" />
                         <col className="w-[12%]" />
                         <col className="w-[11%]" />
                         <col className="w-[15%]" />
                         <col className="w-[16%]" />
                       </colgroup>
                       <thead>
-                        <tr className="bg-[#c00000] text-white text-center">
-                          <th colSpan="4" className="border border-black py-1 px-1 font-extrabold uppercase tracking-wider text-[9.5px]">
+                        <tr className="bg-[#a80000] text-white text-center">
+                          <th colSpan="4" className="border-r border-b border-white/30 py-1.5 px-1 font-extrabold uppercase tracking-wider text-[10px]">
                             DESCRIPTION OF THE GOODS
                           </th>
-                          <th rowSpan="2" className="border border-black p-1 uppercase font-extrabold align-middle tracking-wider text-[9.5px]">
+                          <th rowSpan="2" className="border-r border-white/30 p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
                             QUANTITY
                           </th>
-                          <th rowSpan="2" className="border border-black p-1 uppercase font-extrabold align-middle tracking-wider text-[9.5px]">
+                          <th rowSpan="2" className="border-r border-white/30 p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
                             UNIT PRICE
                           </th>
-                          <th rowSpan="2" className="border border-black p-1 uppercase font-extrabold align-middle tracking-wider text-[9.5px]">
+                          <th rowSpan="2" className="p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
                             TOTAL
                           </th>
                         </tr>
-                        <tr className="bg-[#c00000] text-white text-center text-[8.5px]">
-                          <th className="font-bold border border-black py-1 px-1 whitespace-nowrap">Order No</th>
-                          <th className="font-bold border border-black py-1 px-0.5 whitespace-nowrap">Pos No</th>
-                          <th className="font-bold border border-black py-1 px-1 whitespace-nowrap">Part Name</th>
-                          <th className="font-bold border border-black py-1 px-1 whitespace-nowrap">Drawing No</th>
+                        <tr className="bg-[#a80000] text-white text-center text-[9px] border-b border-slate-300">
+                          <th className="font-bold border-r border-white/30 py-1 px-1 whitespace-nowrap">Order No</th>
+                          <th className="font-bold border-r border-white/30 py-1 px-0.5 whitespace-nowrap">Pos No</th>
+                          <th className="font-bold border-r border-white/30 py-1 px-1 whitespace-nowrap">Part Name</th>
+                          <th className="font-bold border-r border-white/30 py-1 px-1 whitespace-nowrap">Drawing No</th>
                         </tr>
                       </thead>
                       <tbody className="align-middle text-black">
@@ -2490,110 +2484,128 @@
                             const adet = parseFloat(item.adet) || 0;
                             const fiyat = parseFloat(item.fiyat) || 0;
                             const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
+                            const isEven = idx % 2 === 1;
+                            const zebraBg = isEven ? 'bg-[#eef2f7]' : 'bg-white';
                             return (
-                              <tr key={idx} className="border-b border-black">
-                                <td className={`border-r border-black ${rowPadding} truncate font-semibold`}>{item.sipRefNo}</td>
-                                <td className={`border-r border-black ${rowPadding} text-center font-semibold`}>{item.posNo}</td>
-                                <td className={`border-r border-black ${rowPadding} font-bold leading-snug`}>{item.parcaAdi}</td>
-                                <td className={`border-r border-black ${rowPadding} truncate font-medium`}>{cleanDrawingNo(item.resimNo)}</td>
-                                <td className={`border-r border-black ${rowPadding} text-right whitespace-nowrap font-bold`}>{adet} PCS</td>
-                                <td className={`border-r border-black ${rowPadding} text-right whitespace-nowrap font-semibold`}>{fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
-                                <td className={`${rowPadding} text-right font-extrabold whitespace-nowrap`}>{tutar.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
+                              <tr key={idx} className={`${zebraBg} border-b border-slate-300`}>
+                                <td className={`border-r border-slate-300 ${invRowPad} truncate font-medium`}>{item.sipRefNo}</td>
+                                <td className={`border-r border-slate-300 ${invRowPad} text-center`}>{item.posNo}</td>
+                                <td className={`border-r border-slate-300 ${invRowPad} font-bold leading-snug`}>{item.parcaAdi}</td>
+                                <td className={`border-r border-slate-300 ${invRowPad} truncate`}>{cleanDrawingNo(item.resimNo)}</td>
+                                <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap font-extrabold`}>{adet} PCS</td>
+                                <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap`}>{fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
+                                <td className={`${invRowPad} text-right font-extrabold whitespace-nowrap`}>{tutar.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
                               </tr>
                             );
                         })}
-                        {fillerHeight > 0 && (
-                          <tr style={{ height: `${fillerHeight}px` }}>
-                              <td className="border-r border-black"></td>
-                              <td className="border-r border-black"></td>
-                              <td className="border-r border-black"></td>
-                              <td className="border-r border-black"></td>
-                              <td className="border-r border-black"></td>
-                              <td className="border-r border-black"></td>
+                        {/* Kısa faturalarda İnvoice.jpg gibi birkaç boş zebra satırı */}
+                        {Array.from({ length: emptyZebraCount }).map((_, eIdx) => {
+                          const totalIdx = items.length + eIdx;
+                          const zebraBg = totalIdx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
+                          return (
+                            <tr key={`empty-${eIdx}`} className={`${zebraBg} border-b border-slate-300 h-[24px]`}>
+                              <td className="border-r border-slate-300"></td>
+                              <td className="border-r border-slate-300"></td>
+                              <td className="border-r border-slate-300"></td>
+                              <td className="border-r border-slate-300"></td>
+                              <td className="border-r border-slate-300"></td>
+                              <td className="border-r border-slate-300"></td>
                               <td></td>
-                          </tr>
-                        )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
 
-                        {/* ALT BÖLÜM SATIR 1: Regülasyon Metni ve Net Amount */}
-                        <tr className="border-t-[1.5px] border-b border-black">
-                          <td colSpan="4" className="border-r border-black p-1.5 text-[#0052cc] font-bold text-[8px] leading-snug bg-slate-100 align-middle">
+                    {/* ESNEK A4 GÖVDE BOŞLUĞU (Kısa faturada uzar, uzun faturada kapanır) */}
+                    <div className="flex-1 bg-white min-h-[8px]"></div>
+
+                    {/* ALT TOPLAM, REGÜLASYON VE BANKA BLOĞU */}
+                    <table className="w-full text-left border-collapse border-t border-slate-300 shrink-0" style={{tableLayout: 'fixed'}}>
+                      <colgroup>
+                        <col className="w-[58%]" />
+                        <col className="w-[42%]" />
+                      </colgroup>
+                      <tbody>
+                        {/* SATIR 1: Regülasyon Metni ve Net Amount */}
+                        <tr className="border-b border-slate-300">
+                          <td className="border-r border-slate-300 p-2 text-[#003d99] font-bold text-[8.5px] leading-snug bg-[#eef2f7] align-middle">
                             According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
                           </td>
-                          <td colSpan="3" className="p-1.5 bg-white align-bottom">
+                          <td className="p-2.5 bg-white align-bottom">
                             {isFreeOfCharge && (
-                              <div className="text-[8px] font-extrabold text-[#c00000] uppercase leading-tight mb-1">
+                              <div className="text-[8px] font-extrabold text-[#a80000] uppercase leading-tight mb-1">
                                 FREE OF CHARGE. VALUE FOR CUSTOMS PURPOSES ONLY.
                               </div>
                             )}
-                            <div className="flex justify-between items-end font-extrabold text-[10.5px] text-black">
+                            <div className="flex justify-between items-end font-extrabold text-[11px] text-black">
                               <span>Net Amount</span>
                               <span>{totals?.totalTutar?.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
                             </div>
                           </td>
                         </tr>
 
-                        {/* ALT BÖLÜM SATIR 2: Ağırlık/Banka Bilgileri ve VAT / Invoice Amount / Down Payment */}
+                        {/* SATIR 2: Ağırlık/Banka Bilgileri ve VAT / Invoice Amount / Yazı ile Tutar */}
                         <tr>
-                          <td colSpan="4" className="border-r border-black p-2 align-top">
-                            <div className="grid grid-cols-[115px_1fr] gap-x-2 gap-y-0.5 text-[8.5px] uppercase items-center">
-                               <div className="text-black font-extrabold">NET WEIGHT :</div><div className="text-black font-bold">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</div>
-                               <div className="text-black font-extrabold">GROSS WEIGHT :</div><div className="text-black font-bold">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</div>
-                               <div className="text-black font-extrabold">QUANTITY :</div><div className="text-black font-bold">{totals?.totalAdet?.toLocaleString('tr-TR')} PCS</div>
+                          <td className="border-r border-slate-300 p-2.5 align-top bg-white">
+                            <div className="grid grid-cols-[118px_1fr] gap-x-2 gap-y-0.5 text-[9px] uppercase items-center">
+                               <div className="text-black font-extrabold">NET WEIGHT :</div><div className="text-black font-semibold">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</div>
+                               <div className="text-black font-extrabold">GROSS WEIGHT :</div><div className="text-black font-semibold">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</div>
+                               <div className="text-black font-extrabold">QUANTITY :</div><div className="text-black font-semibold">{totals?.totalAdet?.toLocaleString('tr-TR')} PCS</div>
                                <div className="text-black font-extrabold">PACKED IN :</div>
-                               <div className="text-black font-bold flex items-center justify-between pr-2">
+                               <div className="text-black font-semibold flex items-center justify-between pr-2">
                                  <span>{totals?.paletCount} PALLETS</span>
-                                 <span className="text-[#0052cc] text-[9.5px] font-black italic inline-flex items-center gap-1">TCT <Truck size={11} className="inline text-[#0052cc]"/></span>
+                                 <span className="text-[#0047b3] text-[10px] font-black italic inline-flex items-center gap-1">TCT <Truck size={11} className="inline text-[#0047b3]"/></span>
                                </div>
                                <div className="text-black font-extrabold self-start">PALLET DIMENSIONS :</div>
-                               <div className="text-black text-[8px] leading-tight font-semibold normal-case">{palletSummary}</div>
+                               <div className="text-black text-[8.5px] leading-tight font-semibold normal-case">{palletSummary}</div>
                                <div className="text-black font-extrabold pt-0.5">ORIGIN :</div>
                                <div className="text-black font-extrabold flex items-center gap-1.5 pt-0.5">
-                                 TÜRKİYE TR <span className="bg-[#c00000] text-white px-1 text-[7px] rounded-sm font-black">C*</span>
+                                 TÜRKİYE TR <span className="bg-[#a80000] text-white px-1 text-[7px] rounded-sm font-black">C*</span>
                                </div>
                                
-                               {/* Kesintisiz Tam Çizgi */}
-                               <div className="col-span-2 border-t border-black my-1"></div>
+                               <div className="col-span-2 border-t border-slate-300 my-1"></div>
 
                                <div className="text-black font-extrabold">OUR BANK DETAILS</div>
                                <div className="text-black font-bold">{selectedBank?.bankName || '-'}</div>
                                
                                <div className="text-black font-extrabold">SWIFT CODE</div>
-                               <div className="text-black font-bold">{selectedBank?.swift || '-'}</div>
+                               <div className="text-black font-semibold">{selectedBank?.swift || '-'}</div>
                                
                                <div className="text-black font-extrabold">ACCOUNT NO</div>
-                               <div className="text-black font-bold">-</div>
+                               <div className="text-black font-semibold">-</div>
                                
                                <div className="text-black font-extrabold">IBAN NO</div>
-                               <div className="text-black font-black tracking-tight">{selectedBank?.iban || '-'}</div>
+                               <div className="text-black font-extrabold">{selectedBank?.iban || '-'}</div>
                             </div>
                           </td>
-                          <td colSpan="3" className="p-0 align-top h-full">
-                            <div className="flex flex-col justify-between h-full font-bold text-[10px]" style={{ minHeight: '148px' }}>
+                          <td className="p-0 align-top bg-white h-full">
+                            <div className="flex flex-col justify-between h-full font-bold text-[10.5px]" style={{ minHeight: '152px' }}>
                               <div>
-                                {/* VAT */}
-                                <div className="flex justify-between items-center px-2 py-1 text-[#0052cc] border-b border-black text-[10.5px]">
-                                   <span>VAT</span>
-                                   <span>0,00 .-{getSymbol(currency)}</span>
+                                {/* VAT (İnvoice.jpg gibi Açık Mavi-Gri Arka Planlı) */}
+                                <div className="flex justify-between items-center px-2.5 py-1.5 text-[#003d99] bg-[#eef2f7] border-b border-slate-300 text-[11px]">
+                                   <span className="font-extrabold">VAT</span>
+                                   <span className="font-extrabold">0,00 .-{getSymbol(currency)}</span>
                                 </div>
 
                                 {/* Invoice Amount */}
-                                <div className="flex justify-between items-center px-2 py-1.5 border-b-2 border-double border-black text-[10.5px] bg-white">
+                                <div className="flex justify-between items-center px-2.5 py-2 border-b-4 border-double border-slate-400 text-[11px] bg-white">
                                    <span className="font-extrabold text-black">Invoice Amount</span>
-                                   <span className="text-[#c00000] text-[9px] font-black uppercase text-center px-1">{customer?.country} {transporter?.deliveryTerm}</span>
+                                   <span className="text-[#a80000] text-[9.5px] font-black uppercase text-center px-1">{customer?.country} {transporter?.deliveryTerm}</span>
                                    <span className="font-black text-black">{totals?.totalTutar?.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
                                 </div>
 
-                                {/* Down Payment & Remaining Amount (Sol Kenarla Kusursuz Hizalı) */}
+                                {/* Down Payment & Remaining Amount */}
                                 {hasDownPayment && (
                                   <div>
-                                    <div className="flex justify-between items-center px-2 py-1.5 text-[#c00000] font-extrabold text-[10px] border-b border-slate-300">
+                                    <div className="flex justify-between items-center px-2.5 py-1.5 text-[#a80000] font-extrabold text-[10px] border-b border-slate-200">
                                       <span className="underline">DOWN PAYMENT ({downPaymentRate}%)</span>
                                       <span className="underline whitespace-nowrap">
                                         {downPaymentAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}
                                       </span>
                                     </div>
 
-                                    <div className="flex justify-between items-center px-2 py-1.5 text-[#0052cc] font-extrabold text-[10.5px]">
+                                    <div className="flex justify-between items-center px-2.5 py-1.5 text-[#0047b3] font-extrabold text-[10.5px]">
                                       <span className="underline">REMAINING AMOUNT</span>
                                       <span className="underline whitespace-nowrap">
                                         {remainingAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}
@@ -2603,12 +2615,13 @@
                                 )}
                               </div>
 
-                              <div className="p-1.5 text-center bg-slate-50 border-t border-black mt-auto">
-                                <span className="text-[#0052cc] underline text-[8px] font-bold leading-tight block">
+                              {/* Yazı ile Tutar (İnvoice.jpg gibi Açık Mavi-Gri Şerit) */}
+                              <div className="py-2 px-2 text-center bg-[#eef2f7] border-t border-b border-slate-300 my-auto">
+                                <span className="text-[#003d99] italic text-[8.5px] font-semibold leading-tight block">
                                   {getAmountInWords(hasDownPayment ? remainingAmount : totals?.totalTutar, currency)}
                                 </span>
                                 {isFreeOfCharge && (
-                                  <span className="text-[#c00000] font-bold text-[7.5px] block mt-0.5 uppercase">
+                                  <span className="text-[#a80000] font-bold text-[8px] block mt-0.5 uppercase not-italic">
                                     Free of charge. Value for customs purposes only.
                                   </span>
                                 )}
@@ -2621,17 +2634,201 @@
                   </div>
 
                   {/* FOOTER */}
-                  <div className="mt-1.5 flex flex-col items-center justify-center pt-1">
-                    <div className="flex flex-wrap justify-center gap-5 w-full px-6 mb-1 text-[#0052cc] text-[9px] font-semibold">
+                  <div className="mt-2 flex flex-col items-center justify-center shrink-0">
+                    <div className="flex flex-wrap justify-center gap-6 w-full px-6 mb-1.5 text-[#0047b3] text-[9.5px] font-medium">
                       {customer?.contacts && customer.contacts.filter(c => c.email).length > 0 ? (
                         customer.contacts.filter(c => c.email).map((c, i) => (
                           <a key={i} href={`mailto:${c.email}`} className="underline flex items-center gap-1">
-                            <Icon name="mail" size={10}/> {c.name ? `${c.name} (${c.email})` : c.email}
+                            <Icon name="mail" size={11}/> {c.name ? `${c.name} (${c.email})` : c.email}
                           </a>
                         ))
                       ) : null}
                     </div>
-                    <div className="w-full text-center text-[8.5px] bg-slate-200 border border-black py-1 px-2 font-bold text-black">
+                    <div className="w-full text-center text-[9px] bg-[#e2e8f0] border border-slate-400 py-1.5 px-2 font-bold text-black">
+                      {exporter?.name}<br/>
+                      <span className="font-normal text-[8.5px]">{exporter?.address} Tel: {exporter?.phone} Fax: {exporter?.fax}</span><br/>
+                      VAT ID No: {exporter?.vatNo}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* ========================================================================= */}
+              {/* 2. PACKING LIST / ÇEKİ LİSTESİ (Çeki.jpg ile Birebir + Kısa/Uzun A4 Uyumlu) */}
+              {/* ========================================================================= */}
+              {activeTab === 'packing' && (
+                <div className="bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
+                  
+                  {/* ÜST VE TABLO BÖLÜMÜ */}
+                  <div>
+                    {/* TOP: Centered Logo */}
+                    <div className="flex flex-col items-center mb-2">
+                      {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-h-[78px] max-w-[240px] object-contain" />}
+                    </div>
+
+                    {/* CUSTOMER INFO BOX */}
+                    <div className="border border-black bg-white mb-2.5 text-[10px]">
+                      <div className="grid grid-cols-[110px_1fr_180px] gap-3 p-2.5 items-center">
+                        <div className="font-extrabold text-black self-start pt-0.5 tracking-wide">CUSTOMER</div>
+                        <div className="flex flex-col border-l border-black pl-3">
+                          <div className="font-black text-[12.5px] text-black uppercase leading-snug">{customer?.name}</div>
+                          <div className="text-black mt-0.5 leading-snug">{customer?.address}</div>
+                          <div className="flex items-center gap-6 mt-1.5 font-bold text-black">
+                            <span className="uppercase">{customer?.country}</span>
+                            <span>VAT ID: {customer?.vatNo}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end justify-between h-full">
+                          {customer?.logo && <img src={customer.logo} alt="Customer Logo" className="h-11 max-w-[160px] object-contain" />}
+                          <div className="text-[10px] font-extrabold text-black mt-auto pt-2">
+                            Date: {invoiceDate}
+                          </div>
+                        </div>
+                      </div>
+
+                      {hasCustomDelivery && (
+                        <div className="grid grid-cols-[110px_1fr] gap-3 px-2.5 py-1.5 border-t border-black bg-slate-50 items-center">
+                          <div className="font-black text-[#a80000] text-[9px] uppercase tracking-wide">DELIVERY ADDRESS</div>
+                          <div className="font-bold text-[#0047b3] text-[9.5px] border-l border-black pl-3 leading-snug whitespace-pre-line">
+                            {customDeliveryAddress}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* YOUR ORDER NO BOX */}
+                    <div className="grid grid-cols-[110px_1fr] gap-3 text-[9.5px] mb-2.5 border border-black px-2.5 py-1.5 bg-white items-center">
+                      <div className="font-extrabold uppercase text-black">YOUR ORDER NO</div>
+                      <div className="leading-snug font-bold text-black border-l border-black pl-3">{uniqueOrders}</div>
+                    </div>
+
+                    <div className="text-center font-bold text-[10px] mb-2 text-black">
+                      We accomplished the fabricating of the <span className="underline">{uniquePartNames || 'parts'}</span>. You can find detailed packing list as below.
+                    </div>
+
+                    {/* ÇEKİ LİSTESİ TABLOSU (Çeki.jpg gibi Üst Başlık ve Ürün Tablosu) */}
+                    <table className="w-full text-center border-collapse border border-black" style={{tableLayout: 'fixed'}}>
+                      <colgroup>
+                        <col className="w-[46%]" />
+                        <col className="w-[6.5%]" />
+                        <col className="w-[8.5%]" />
+                        <col className="w-[12.5%]" />
+                        <col className="w-[12.5%]" />
+                        <col className="w-[14%]" />
+                      </colgroup>
+                      <thead>
+                        <tr className="bg-[#a80000] text-white border-b border-black">
+                          <th colSpan="6" className="py-1.5 px-2 font-extrabold uppercase tracking-wider text-[10px] border border-black">
+                            ÇEKİ VE AMBALAJ LİSTESİ <span className="text-[9px] font-bold ml-1">(WEIGHT AND PACKING LIST)</span>
+                          </th>
+                        </tr>
+                        <tr className="bg-[#eef2f7] border-b border-black text-[9px] font-bold text-black">
+                          <th className="border border-black py-1.5 px-2.5 text-left">Malın Cinsi<br/><span className="text-[#0047b3] font-normal">(Description)</span></th>
+                          <th className="border border-black py-1.5 px-0.5">Miktarı<br/><span className="text-[#0047b3] font-normal">(Qty)</span></th>
+                          <th className="border border-black py-1.5 px-0.5">Ambalaj<br/><span className="text-[#0047b3] font-normal">(Packing)</span></th>
+                          <th className="border border-black py-1.5 px-1">Net Ağırlık<br/><span className="text-[#0047b3] font-normal">(Net Weight)</span></th>
+                          <th className="border border-black py-1.5 px-1">Brüt Ağırlık<br/><span className="text-[#0047b3] font-normal">(Gross Weight)</span></th>
+                          <th className="border border-black py-1.5 px-1">Palet Ebatları<br/><span className="text-[#0047b3] font-normal">(Pallet Dim.)</span></th>
+                        </tr>
+                      </thead>
+                    </table>
+
+                    {/* Alt Kategori Başlığı (Çeki.jpg gibi Çerçevesiz Ara Satır) */}
+                    <div className="text-left font-bold py-1.5 px-1 bg-white text-[9.5px]">
+                      Çelik Dökümden Aşınır Parçalar / <span className="text-[#0047b3] font-semibold">Steel Casting Wear Parts</span>
+                    </div>
+
+                    {/* ÜRÜN SATIRLARI TABLOSU */}
+                    <table className="w-full text-center border-collapse border border-black" style={{tableLayout: 'fixed'}}>
+                      <colgroup>
+                        <col className="w-[46%]" />
+                        <col className="w-[6.5%]" />
+                        <col className="w-[8.5%]" />
+                        <col className="w-[12.5%]" />
+                        <col className="w-[12.5%]" />
+                        <col className="w-[14%]" />
+                      </colgroup>
+                      <tbody className="align-middle text-black">
+                        {processedRows.map((rowInfo, idx) => {
+                          const item = rowInfo.item;
+                          const rowBg = rowInfo.groupColor || 'bg-white';
+                          const cleanedDwg = cleanDrawingNo(item.resimNo);
+
+                          return (
+                            <tr key={idx} className={`${rowBg}`}>
+                              <td className={`border border-black ${packRowPad} text-left font-medium leading-tight`}>
+                                <span className="font-bold">{item.parcaAdi}</span>{cleanedDwg ? ` — ${cleanedDwg}` : ''}
+                              </td>
+                              <td className={`border border-black ${packRowPad} font-bold`}>{item.adet}</td>
+                              
+                              {rowInfo.isFirstInGroup ? (
+                                <>
+                                  <td rowSpan={rowInfo.rowSpan} className={`border border-black ${packRowPad} font-bold text-black align-middle ${rowBg}`}>{item.paletNo}</td>
+                                  <td className={`border border-black ${packRowPad} whitespace-nowrap font-medium`}>{item.netKg ? `${item.netKg} KGS` : '-'}</td>
+                                  <td rowSpan={rowInfo.rowSpan} className={`border border-black ${packRowPad} font-bold text-black align-middle whitespace-nowrap ${rowBg}`}>{item.brutKg ? `${item.brutKg} KGS` : '-'}</td>
+                                  <td rowSpan={rowInfo.rowSpan} className={`border border-black ${packRowPad} font-semibold text-black align-middle whitespace-nowrap ${rowBg}`}>{item.paletEbatlari}</td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className={`border border-black ${packRowPad} whitespace-nowrap font-medium`}>{item.netKg ? `${item.netKg} KGS` : '-'}</td>
+                                </>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* ALT BLOK: Çeki.jpg gibi A4 Sayfasının En Altına (mt-auto) Oturur */}
+                  <div className="mt-auto pt-2 shrink-0">
+                    {/* REGULATION BOX */}
+                    <div className="bg-[#eef2f7] py-1.5 px-3 text-center text-[#003d99] font-bold text-[8px] border border-black mb-1.5 leading-snug">
+                      According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
+                    </div>
+
+                    {/* TOTAL TABLE */}
+                    <table className="w-full text-center text-[10px] font-bold border-collapse border border-black mb-1.5" style={{tableLayout: 'fixed'}}>
+                      <colgroup>
+                        <col className="w-[46%]" />
+                        <col className="w-[6.5%]" />
+                        <col className="w-[8.5%]" />
+                        <col className="w-[12.5%]" />
+                        <col className="w-[12.5%]" />
+                        <col className="w-[14%]" />
+                      </colgroup>
+                      <tbody>
+                        <tr className="bg-[#eef2f7] text-black">
+                          <td className="border border-black py-1.5 px-2 uppercase font-black">TOTAL</td>
+                          <td className="border border-black py-1.5 px-0.5 font-black">{totals?.totalAdet?.toLocaleString('tr-TR')}</td>
+                          <td className="border border-black py-1.5 px-0.5 font-black">{totals?.paletCount}</td>
+                          <td className="border border-black py-1.5 px-1 font-black whitespace-nowrap">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
+                          <td className="border border-black py-1.5 px-1 font-black whitespace-nowrap">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
+                          <td className="border border-black py-1.5 px-1 text-center align-middle">
+                            <span className="text-[#0047b3] italic font-black inline-flex items-center justify-center gap-1">
+                              TCT <Truck size={11} className="inline text-[#0047b3]"/>
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {/* YALNIZ PALET & KAŞE ALANI */}
+                    <div className="text-center text-[10.5px] font-extrabold mt-1 relative flex flex-col items-center">
+                      <div>
+                        <span className="text-[#0047b3]">YALNIZ {totals?.paletCount} Palet</span>
+                        <span className="mx-5"></span>
+                        <span className="text-[#a80000]">ONLY {totals?.paletCount} Pallets</span>
+                      </div>
+
+                      <div className="my-1 relative w-full flex justify-center min-h-[78px] items-center">
+                        <StampImage maxW="195px" maxH="78px" />
+                      </div>
+                    </div>
+
+                    {/* BOTTOM COMPANY INFO */}
+                    <div className="w-full text-center text-[8.5px] bg-[#e2e8f0] border border-slate-400 py-1.5 px-2 font-bold text-black">
                       {exporter?.name}<br/>
                       <span className="font-normal text-[8px]">{exporter?.address} Tel: {exporter?.phone} Fax: {exporter?.fax}</span><br/>
                       VAT ID No: {exporter?.vatNo}
@@ -2641,186 +2838,11 @@
                 </div>
               )}
 
-              {/* 2. PACKING LIST (Çeki Listesi) */}
-              {activeTab === 'packing' && (
-                <div className="bg-white p-5 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', minHeight: '285mm' }}>
-                  
-                  <div>
-                    {/* TOP: Centered Logo */}
-                    <div className="flex flex-col items-center mb-1.5">
-                      {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-h-[76px] max-w-[240px] object-contain" />}
-                    </div>
-
-                    {/* CUSTOMER INFO & DELIVERY ADDRESS */}
-                    <div className="border-[1.5px] border-black bg-white mb-1.5 text-[9.5px]">
-                      <div className="grid grid-cols-[105px_1fr_175px] gap-2.5 p-2 items-center">
-                        <div className="font-extrabold text-black self-start pt-0.5 tracking-wide">CUSTOMER</div>
-                        <div className="flex flex-col border-l border-black pl-2.5">
-                          <div className="font-black text-[12px] text-black uppercase leading-snug">{customer?.name}</div>
-                          <div className="text-black font-medium mt-0.5 leading-snug">{customer?.address}</div>
-                          <div className="flex items-center gap-6 mt-1 font-bold text-black">
-                            <span className="uppercase">{customer?.country}</span>
-                            <span>VAT ID: {customer?.vatNo}</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end justify-between h-full">
-                          {customer?.logo && <img src={customer.logo} alt="Customer Logo" className="h-11 max-w-[155px] object-contain" />}
-                          <div className="text-[9.5px] font-extrabold text-black mt-auto pt-1">
-                            Date: {invoiceDate}
-                          </div>
-                        </div>
-                      </div>
-
-                      {hasCustomDelivery && (
-                        <div className="grid grid-cols-[105px_1fr] gap-2.5 px-2 py-1 border-t border-black bg-slate-50 items-center">
-                          <div className="font-black text-[#c00000] text-[9px] uppercase tracking-wide">DELIVERY ADDRESS</div>
-                          <div className="font-bold text-[#0052cc] text-[9.5px] border-l border-black pl-2.5 leading-snug whitespace-pre-line">
-                            {customDeliveryAddress}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ORDER NO BOX */}
-                    <div className="grid grid-cols-[105px_1fr] gap-2.5 text-[9px] mb-1.5 border-[1.5px] border-black px-2 py-1 bg-slate-50/70 items-center">
-                      <div className="font-extrabold uppercase text-black">YOUR ORDER NO</div>
-                      <div className="leading-snug font-bold text-black border-l border-black pl-2.5">{uniqueOrders}</div>
-                    </div>
-
-                    <div className="text-center font-bold text-[9.5px] mb-1 text-black">
-                      We accomplished the fabricating of the <span className="underline">{uniquePartNames || 'parts'}</span>. You can find detailed packing list as below.
-                    </div>
-
-                    {/* TABLE (Tüm Hücrelerde Tam Siyah Kenarlık ile rowSpan Çizgi Kopması Giderildi) */}
-                    <table className={`w-full text-center ${tableFontSize} border-collapse border-[1.5px] border-black mb-1`} style={{tableLayout: 'fixed'}}>
-                      <colgroup>
-                        <col className="w-[46%]" />
-                        <col className="w-[6%]" />
-                        <col className="w-[8%]" />
-                        <col className="w-[12.5%]" />
-                        <col className="w-[12.5%]" />
-                        <col className="w-[15%]" />
-                      </colgroup>
-                      <thead>
-                        <tr className="bg-[#c00000] text-white border-b border-black">
-                          <th colSpan="6" className="py-1 px-1 font-extrabold uppercase tracking-wider text-[9.5px] border border-black">
-                            ÇEKİ VE AMBALAJ LİSTESİ <span className="text-[8.5px] font-bold ml-1">(WEIGHT AND PACKING LIST)</span>
-                          </th>
-                        </tr>
-                        <tr className="bg-slate-100 border-b border-black text-[8.5px] font-bold text-black">
-                          <th className="border border-black py-1 px-2 text-left">Malın Cinsi<br/><span className="text-[#0052cc] font-normal">(Description)</span></th>
-                          <th className="border border-black py-1 px-0.5">Miktarı<br/><span className="text-[#0052cc] font-normal">(Qty)</span></th>
-                          <th className="border border-black py-1 px-0.5">Ambalaj<br/><span className="text-[#0052cc] font-normal">(Packing)</span></th>
-                          <th className="border border-black py-1 px-1">Net Ağırlık<br/><span className="text-[#0052cc] font-normal">(Net Weight)</span></th>
-                          <th className="border border-black py-1 px-1">Brüt Ağırlık<br/><span className="text-[#0052cc] font-normal">(Gross Weight)</span></th>
-                          <th className="border border-black py-1 px-1">Palet Ebatları<br/><span className="text-[#0052cc] font-normal">(Pallet Dim.)</span></th>
-                        </tr>
-                      </thead>
-                      <tbody className="align-middle text-black">
-                        <tr>
-                          <td colSpan="6" className="text-left font-bold py-1 px-2 bg-white border border-black text-[9px]">
-                            Çelik Dökümden Aşınır Parçalar / <span className="text-[#0052cc] font-semibold">Steel Casting Wear Parts</span>
-                          </td>
-                        </tr>
-                        {processedRows.map((rowInfo, idx) => {
-                          const item = rowInfo.item;
-                          const rowBg = rowInfo.groupColor || 'bg-white';
-                          const cleanedDwg = cleanDrawingNo(item.resimNo);
-
-                          return (
-                            <tr key={idx} className={`${rowBg}`}>
-                              <td className={`border border-black ${packingRowPadding} text-left font-medium leading-tight`}>
-                                <span className="font-bold">{item.parcaAdi}</span>{cleanedDwg ? ` — ${cleanedDwg}` : ''}
-                              </td>
-                              <td className={`border border-black ${packingRowPadding} font-bold`}>{item.adet}</td>
-                              
-                              {rowInfo.isFirstInGroup ? (
-                                <>
-                                  <td rowSpan={rowInfo.rowSpan} className={`border border-black ${packingRowPadding} font-bold text-black align-middle ${rowBg}`}>{item.paletNo}</td>
-                                  <td className={`border border-black ${packingRowPadding} whitespace-nowrap font-medium`}>{item.netKg ? `${item.netKg} KGS` : '-'}</td>
-                                  <td rowSpan={rowInfo.rowSpan} className={`border border-black ${packingRowPadding} font-bold text-black align-middle whitespace-nowrap ${rowBg}`}>{item.brutKg ? `${item.brutKg} KGS` : '-'}</td>
-                                  <td rowSpan={rowInfo.rowSpan} className={`border border-black ${packingRowPadding} font-semibold text-black align-middle whitespace-nowrap ${rowBg}`}>{item.paletEbatlari}</td>
-                                </>
-                              ) : (
-                                <>
-                                  <td className={`border border-black ${packingRowPadding} whitespace-nowrap font-medium`}>{item.netKg ? `${item.netKg} KGS` : '-'}</td>
-                                </>
-                              )}
-                            </tr>
-                          );
-                        })}
-                        {packingFillerHeight > 0 && (
-                          <tr style={{ height: `${packingFillerHeight}px` }}>
-                            <td className="border border-black"></td>
-                            <td className="border border-black"></td>
-                            <td className="border border-black"></td>
-                            <td className="border border-black"></td>
-                            <td className="border border-black"></td>
-                            <td className="border border-black"></td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-
-                    {/* REGULATION & TOTALS */}
-                    <div className="bg-slate-100 py-1 px-2 text-center text-[#0052cc] font-bold text-[7.5px] border-[1.5px] border-black mb-1 leading-snug">
-                      According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
-                    </div>
-
-                    <table className="w-full text-center text-[9.5px] font-bold border-collapse border-[1.5px] border-black mb-1" style={{tableLayout: 'fixed'}}>
-                      <colgroup>
-                        <col className="w-[46%]" />
-                        <col className="w-[6%]" />
-                        <col className="w-[8%]" />
-                        <col className="w-[12.5%]" />
-                        <col className="w-[12.5%]" />
-                        <col className="w-[15%]" />
-                      </colgroup>
-                      <tbody>
-                        <tr className="bg-slate-100 text-black">
-                          <td className="border border-black py-1 px-2 uppercase font-black">TOTAL</td>
-                          <td className="border border-black py-1 px-0.5 font-black">{totals?.totalAdet?.toLocaleString('tr-TR')}</td>
-                          <td className="border border-black py-1 px-0.5 font-black">{totals?.paletCount}</td>
-                          <td className="border border-black py-1 px-1 font-black whitespace-nowrap">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
-                          <td className="border border-black py-1 px-1 font-black whitespace-nowrap">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
-                          <td className="border border-black py-1 px-1 text-center align-middle">
-                            <span className="text-[#0052cc] italic font-black inline-flex items-center justify-center gap-1">
-                              TCT <Truck size={11} className="inline text-[#0052cc]"/>
-                            </span>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-
-                    {/* STAMP AREA */}
-                    <div className="text-center text-[10px] font-bold mt-1 relative flex flex-col items-center">
-                      <div>
-                        <span className="text-[#0052cc]">YALNIZ {totals?.paletCount} Palet</span>
-                        <span className="mx-4"></span>
-                        <span className="text-[#c00000]">ONLY {totals?.paletCount} Pallets</span>
-                      </div>
-
-                      <div className="mt-1 relative w-full flex justify-center min-h-[72px]">
-                        <StampImage maxW="185px" maxH="72px" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* BOTTOM COMPANY INFO */}
-                  <div className="pt-1">
-                    <div className="w-full text-center text-[8px] bg-slate-200 border border-black py-1 px-2 font-bold text-black">
-                      {exporter?.name}<br/>
-                      <span className="font-normal text-[7.5px]">{exporter?.address} Tel: {exporter?.phone} Fax: {exporter?.fax}</span><br/>
-                      VAT ID No: {exporter?.vatNo}
-                    </div>
-                  </div>
-
-                </div>
-              )}
-
-              {/* 3. İŞ EMRİ (Kurumsal Antet ve Tam Görünür Kaşe) */}
+              {/* ========================================================================= */}
+              {/* 3. İŞ EMRİ (Dikey A4 Tam Sayfa Dengeli Kullanım) */}
+              {/* ========================================================================= */}
               {activeTab === 'workOrder' && (
-                <div className="bg-white p-8 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page flex flex-col justify-between border border-slate-300" style={{ width: '210mm', minHeight: '285mm' }}>
+                <div className="bg-white p-8 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page flex flex-col justify-between border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
                   <div>
                     <div className="flex justify-between items-center border-b-2 border-black pb-4 mb-6">
                       {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-w-[220px] object-contain" />}
@@ -2832,7 +2854,7 @@
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-[150px_12px_1fr] gap-y-3.5 text-[12.5px] border border-black p-4 bg-slate-50/40 mb-6">
+                    <div className="grid grid-cols-[150px_12px_1fr] gap-y-4 text-[13px] border border-black p-5 bg-slate-50/40 mb-6">
                       <div className="font-extrabold text-black">GÜMRÜKÇÜ</div><div className="font-bold">:</div>
                       <div>
                         <p className="font-extrabold text-black">SAYGILI GÜMRÜK MÜŞAVİRLİĞİ LTD. ŞTİ.</p>
@@ -2849,7 +2871,7 @@
                       <div className="font-extrabold text-black">TESLİM YERİ</div><div className="font-bold">:</div>
                       <div className="font-bold">
                         {hasCustomDelivery ? (
-                          <div className="text-[#0052cc] whitespace-pre-line">{customDeliveryAddress}</div>
+                          <div className="text-[#0047b3] whitespace-pre-line">{customDeliveryAddress}</div>
                         ) : (
                           <span className="text-black">{customer?.country}</span>
                         )}
@@ -2877,7 +2899,7 @@
                       </div>
                     </div>
 
-                    <div className="text-xs leading-relaxed space-y-2.5 border border-black p-4 bg-white">
+                    <div className="text-xs leading-relaxed space-y-3 border border-black p-5 bg-white">
                       <p className="font-semibold">1. GÜMRÜK BEYANNAMELERİ BU İŞ EMRİNDE VE EKİNDE GÖNDERİLEN BELGELERDE BELİRTİLEN DETAYLARA TAM MANASIYLA UYGUN OLARAK HAZIRLANACAKTIR.</p>
                       <div>
                         <p className="font-bold">2. VASITAYA VERİLECEK BELGELER :</p>
@@ -2897,12 +2919,12 @@
                     </div>
                   </div>
 
-                  {/* Alt Bölüm: Banka Bilgisi Kutusu ve Kesilmeyen İmza/Kaşe */}
-                  <div className="mt-6 flex justify-between items-start pb-4">
+                  {/* Alt Bölüm: Banka Bilgisi Kutusu ve Kaşe */}
+                  <div className="mt-auto pt-6 flex justify-between items-end pb-2">
                     {selectedBank ? (
-                      <div className="border-2 border-black p-3 text-center text-xs font-extrabold max-w-[300px] bg-slate-50">
+                      <div className="border-2 border-black p-3.5 text-center text-xs font-extrabold max-w-[300px] bg-slate-50 self-start">
                         <div className="text-black">BEYANNAMEYE BANKA BİLGİSİ OLARAK</div>
-                        <div className="text-[#c00000] my-1 text-sm">{selectedBank.bankName}</div>
+                        <div className="text-[#a80000] my-1 text-sm">{selectedBank.bankName}</div>
                         <div className="text-black">YAZILACAK</div>
                       </div>
                     ) : <div />}
@@ -2918,9 +2940,11 @@
                 </div>
               )}
 
-              {/* 4. NAKLİYE TALİMATI (Düzeltilmiş Tablo Sütunları ve Tam Görünür Kaşe) */}
+              {/* ========================================================================= */}
+              {/* 4. NAKLİYE TALİMATI (Dikey A4 Tam Sayfa Dengeli Kullanım) */}
+              {/* ========================================================================= */}
               {activeTab === 'transport' && (
-                <div className="bg-white p-8 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page flex flex-col justify-between border border-slate-300" style={{ width: '210mm', minHeight: '285mm' }}>
+                <div className="bg-white p-8 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page flex flex-col justify-between border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
                   <div>
                     <div className="flex justify-between items-center border-b-2 border-black pb-4 mb-6">
                       {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-w-[220px] object-contain" />}
@@ -2931,7 +2955,7 @@
                       </div>
                     </div>
 
-                    <div className="mb-4 border-l-4 border-black pl-3 py-1 bg-slate-50">
+                    <div className="mb-4 border-l-4 border-black pl-3 py-1.5 bg-slate-50">
                       <h2 className="text-base font-black text-black uppercase">{transporter?.name || 'NAKLİYECİ FİRMA'}</h2>
                       <p className="text-xs text-black mt-0.5">{transporter?.address}</p>
                     </div>
@@ -2939,7 +2963,7 @@
                     <p className="mb-2 text-xs"><strong>Konu:</strong> {customer?.country || 'Yurtdışı'} tarafına sevk edilecek yükümüz hakkında.</p>
                     <p className="mb-4 text-xs">Aşağıda detayları verilen yükümüzün teslimat adresine sevk edilmesini rica ederiz.</p>
 
-                    <table className="w-full border-collapse border-[1.5px] border-black mb-5 text-xs text-center" style={{tableLayout: 'fixed'}}>
+                    <table className="w-full border-collapse border border-black mb-5 text-xs text-center" style={{tableLayout: 'fixed'}}>
                       <colgroup>
                         <col className="w-[46%]" />
                         <col className="w-[16%]" />
@@ -2947,7 +2971,7 @@
                         <col className="w-[19%]" />
                       </colgroup>
                       <thead>
-                        <tr className="bg-slate-200 font-extrabold text-black">
+                        <tr className="bg-[#eef2f7] font-extrabold text-black">
                           <th className="border border-black p-2 text-left whitespace-nowrap">MALIN CİNSİ</th>
                           <th className="border border-black p-2 whitespace-nowrap">AMBALAJ</th>
                           <th className="border border-black p-2 whitespace-nowrap">NET AĞIRLIK</th>
@@ -2956,13 +2980,13 @@
                       </thead>
                       <tbody>
                         <tr>
-                          <td className="border border-black p-2.5 text-left font-bold">
+                          <td className="border border-black p-3 text-left font-bold">
                             ÇELİK DÖKÜMDEN MAMÜL AŞINIR PARÇALAR<br/>
                             <span className="font-semibold text-slate-800">{uniquePartNames}</span>
                           </td>
-                          <td className="border border-black p-2.5 font-extrabold">{totals?.paletCount} Palet</td>
-                          <td className="border border-black p-2.5 font-extrabold">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
-                          <td className="border border-black p-2.5 font-extrabold">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
+                          <td className="border border-black p-3 font-extrabold">{totals?.paletCount} Palet</td>
+                          <td className="border border-black p-3 font-extrabold">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
+                          <td className="border border-black p-3 font-extrabold">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
                         </tr>
                         <tr>
                           <td colSpan={4} className="border border-black p-2 text-black text-left bg-slate-50">
@@ -2972,7 +2996,7 @@
                       </tbody>
                     </table>
 
-                    <div className="grid grid-cols-[145px_12px_1fr] gap-y-3 text-xs border border-black p-4 bg-slate-50/40">
+                    <div className="grid grid-cols-[145px_12px_1fr] gap-y-3.5 text-xs border border-black p-4 bg-slate-50/40">
                       <div className="font-extrabold text-black">ALICI FİRMA</div><div className="font-bold">:</div>
                       <div className="font-bold text-black">
                         {customer?.name} <br/>
@@ -2980,7 +3004,7 @@
                       </div>
 
                       <div className="font-extrabold text-black">TESLİM ADRESİ</div><div className="font-bold">:</div>
-                      <div className="font-bold text-[#0052cc] whitespace-pre-line">
+                      <div className="font-bold text-[#0047b3] whitespace-pre-line">
                         {hasCustomDelivery ? customDeliveryAddress : `${customer?.name}\n${customer?.address} — ${customer?.country}`}
                       </div>
 
@@ -2990,18 +3014,18 @@
                       </div>
 
                       <div className="font-extrabold text-black">TESLİM ŞEKLİ</div><div className="font-bold">:</div>
-                      <div className="font-extrabold text-[#c00000]">{transporter?.deliveryTerm} {customer?.country}</div>
+                      <div className="font-extrabold text-[#a80000]">{transporter?.deliveryTerm} {customer?.country}</div>
                       
                       <div className="font-extrabold text-black">GÜMRÜKLEME</div><div className="font-bold">:</div>
                       <div className="font-extrabold text-black">SAYGILI GÜMRÜK MÜŞAVİRLİĞİ LTD. ŞTİ.</div>
                     </div>
 
-                    <div className="mt-4 border border-black p-3 bg-white text-xs leading-relaxed">
+                    <div className="mt-5 border border-black p-3.5 bg-white text-xs leading-relaxed">
                       <p><strong>Konşimento:</strong> 1 asıl 2 suret olarak düzenlenecek konşimento üzerinde <strong>FREIGHT PREPAID</strong> ve <strong>CLEAN on TRUCK</strong>, ve CMR Belgesinin ekli evraklar kutucuğunda <em>ATR. 1 (original), packing list (copy), invoice (copy)</em> ibareleri yer alacak ve 1 asıl, 1 suret konşimento tarafımıza gönderilecektir.</p>
                     </div>
                   </div>
 
-                  <div className="mt-4 flex justify-end pr-6 pb-4">
+                  <div className="mt-auto pt-4 flex justify-end pr-6 pb-2">
                     <div className="font-bold text-sm text-center flex flex-col items-center">
                       <p>Saygılarımızla,</p>
                       <p className="mt-0.5 font-black text-black">{exporter?.name}</p>
@@ -3013,9 +3037,11 @@
                 </div>
               )}
 
-              {/* 5. SİGORTA TALİMATI (Binlik Ayraçlı Kilo ve Tam Görünür Kaşe) */}
+              {/* ========================================================================= */}
+              {/* 5. SİGORTA TALİMATI (Dikey A4 Tam Sayfa Dengeli Kullanım) */}
+              {/* ========================================================================= */}
               {activeTab === 'insurance' && (
-                <div className="bg-white p-8 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page flex flex-col justify-between border border-slate-300" style={{ width: '210mm', minHeight: '285mm' }}>
+                <div className="bg-white p-8 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page flex flex-col justify-between border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
                   <div>
                     <div className="flex justify-between items-center border-b-2 border-black pb-4 mb-6">
                       {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-w-[220px] object-contain" />}
@@ -3026,7 +3052,7 @@
                       </div>
                     </div>
 
-                    <div className="mb-4 border-l-4 border-black pl-3 py-1 bg-slate-50">
+                    <div className="mb-5 border-l-4 border-black pl-3 py-1.5 bg-slate-50">
                       <h2 className="text-base font-black text-black">{selectedInsurance?.agencyName || 'Sigorta Acentesi Adı'}</h2>
                       {selectedInsurance?.address && <p className="text-xs text-slate-800 mt-0.5">{selectedInsurance.address}</p>}
                       <p className="text-xs font-semibold mt-0.5">
@@ -3037,11 +3063,11 @@
                     </div>
 
                     <p className="mb-2 text-xs"><strong>İlgi:</strong> Nakliye Sigortası</p>
-                    <p className="mb-4 text-xs leading-relaxed">
+                    <p className="mb-5 text-xs leading-relaxed">
                       <strong>{transporter?.name}</strong> şirketi ile <strong>{customer?.country}</strong> adresine sevk edeceğimiz aşağıda detayları verilen malımızın nakliye sigortasının yapılmasını, sigorta poliçesinin ve orijinal suretlerinin tarafımıza verilmesini rica ederiz.
                     </p>
 
-                    <div className="border-[1.5px] border-black p-4 bg-slate-50/50 mb-4 grid grid-cols-[175px_12px_1fr] gap-y-3 text-xs items-center">
+                    <div className="border border-black p-5 bg-slate-50/50 mb-5 grid grid-cols-[175px_12px_1fr] gap-y-3.5 text-xs items-center">
                       <div className="font-extrabold text-black self-start">MALIN CİNSİ</div><div className="font-bold self-start">:</div>
                       <div className="font-extrabold text-black">
                         ÇELİK DÖKÜMDEN MAMÜL AŞINIR PARÇALAR <br/>
@@ -3053,8 +3079,8 @@
                         {totals?.paletCount} Palet / {totals?.totalAdet?.toLocaleString('tr-TR')} Adet (Net: {totals?.totalNetKg?.toLocaleString('tr-TR')} KGS — Brüt: {totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS)
                       </div>
 
-                      <div className="font-extrabold text-[#0052cc]">SİGORTALANACAK BEDEL</div><div className="font-bold">:</div>
-                      <div className="font-black text-sm text-[#0052cc]">
+                      <div className="font-extrabold text-[#0047b3]">SİGORTALANACAK BEDEL</div><div className="font-bold">:</div>
+                      <div className="font-black text-sm text-[#0047b3]">
                         {totals?.totalTutar?.toLocaleString('tr-TR', {minimumFractionDigits:2})} {currency}
                       </div>
 
@@ -3071,20 +3097,20 @@
                       </div>
 
                       <div className="font-extrabold text-black self-start">SEVK ADRESİ</div><div className="font-bold self-start">:</div>
-                      <div className="font-bold text-[#0052cc] whitespace-pre-line">
+                      <div className="font-bold text-[#0047b3] whitespace-pre-line">
                         {hasCustomDelivery ? customDeliveryAddress : `${customer?.name} — ${customer?.address} ${customer?.country}`}
                       </div>
                       
                       <div className="font-extrabold text-black">SATIŞ ŞEKLİ</div><div className="font-bold">:</div>
-                      <div className="font-extrabold text-[#c00000]">{transporter?.deliveryTerm} {customer?.country}</div>
+                      <div className="font-extrabold text-[#a80000]">{transporter?.deliveryTerm} {customer?.country}</div>
                     </div>
 
-                    <div className="bg-red-50 text-[#c00000] p-3 border border-[#c00000] text-xs font-extrabold">
+                    <div className="bg-red-50 text-[#a80000] p-3.5 border border-[#a80000] text-xs font-extrabold">
                       NOT: Mallar %110 (All Risks) olarak sigortalanacak ve ekteki örneğe uygun olarak İngilizce Poliçe düzenlenecektir. POLİÇENİN ACİLEN TARAFIMIZA GÖNDERİLMESİNİ RİCA EDERİZ.
                     </div>
                   </div>
                   
-                  <div className="mt-4 flex justify-end pr-6 pb-4">
+                  <div className="mt-auto pt-4 flex justify-end pr-6 pb-2">
                     <div className="font-bold text-sm text-center flex flex-col items-center">
                       <p>Saygılarımızla,</p>
                       <p className="mt-0.5 font-black text-black">{exporter?.name}</p>
@@ -3096,9 +3122,11 @@
                 </div>
               )}
 
-              {/* 6. A.TR BELGESİ (Temizlenmiş Parça Listesi ve Doğru Şehir Adı) */}
+              {/* ========================================================================= */}
+              {/* 6. A.TR BELGESİ (Dikey A4 Tam Sayfa Dengeli Kullanım) */}
+              {/* ========================================================================= */}
               {activeTab === 'atr' && (
-                <div className="bg-white p-4 mx-auto w-full shadow-lg text-xs relative print-page flex flex-col font-sans text-black border border-slate-300" style={{ width: '210mm', minHeight: '285mm' }}>
+                <div className="bg-white p-4 mx-auto w-full shadow-lg text-xs relative print-page flex flex-col font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
                   
                   <div className="border-2 border-black flex-1 flex flex-col relative">
                     
@@ -3142,8 +3170,8 @@
                         </div>
                         {hasCustomDelivery && (
                           <div className="mt-1 pt-1 border-t border-slate-400 text-[9.5px] leading-tight">
-                            <span className="font-black text-[#c00000] uppercase">DELIVERY ADDRESS: </span>
-                            <span className="font-bold text-[#0052cc] whitespace-pre-line">{customDeliveryAddress}</span>
+                            <span className="font-black text-[#a80000] uppercase">DELIVERY ADDRESS: </span>
+                            <span className="font-bold text-[#0047b3] whitespace-pre-line">{customDeliveryAddress}</span>
                           </div>
                         )}
                       </div>
@@ -3194,7 +3222,7 @@
                             <div className="font-semibold text-[11px] uppercase tracking-tight">
                               ÇELİK DÖKÜMDEN MAMÜL AŞINIR PARÇALAR
                             </div>
-                            <div className="font-black text-[10.5px] uppercase mb-1.5 text-[#0052cc]">
+                            <div className="font-black text-[10.5px] uppercase mb-1.5 text-[#0047b3]">
                               {uniquePartNames || 'STEEL CASTING PARTS'}
                             </div>
                             <div className={`${items.length > 20 ? 'space-y-[1px] text-[8.5px]' : 'space-y-0.5 text-[10px]'} font-normal text-black`}>
