@@ -2783,20 +2783,22 @@
                 <div>
                   <div className="font-black text-[13.5px] uppercase text-black leading-snug">{customer?.name}</div>
                   <div className="mt-0.5 text-black leading-snug">{customer?.address}</div>
-                  <div className="font-extrabold mt-0.5 uppercase text-black">{customer?.country}</div>
-                </div>
-
-                <div className="flex justify-between items-end pt-2 mt-2 border-t border-slate-200">
-                  {hasCustomDelivery ? (
-                    <div className="text-[9px] leading-tight pr-2">
-                      <span className="text-[#a80000] font-black uppercase tracking-wide">DELIVERY ADDRESS: </span>
-                      <span className="text-[#0047b3] font-bold whitespace-pre-line">{customDeliveryAddress}</span>
-                    </div>
-                  ) : <div />}
-                  <div className="text-right font-extrabold text-black text-[10.5px] whitespace-nowrap ml-auto">
-                    VAT ID: {customer?.vatNo}
+                  <div className="flex justify-between items-baseline mt-1">
+                    <span className="font-extrabold uppercase text-black">{customer?.country}</span>
+                    {customer?.vatNo && (
+                      <span className="font-extrabold text-black text-[10.5px] whitespace-nowrap">
+                        VAT ID: {customer.vatNo}
+                      </span>
+                    )}
                   </div>
                 </div>
+
+                {hasCustomDelivery && (
+                  <div className="pt-2 mt-2 border-t border-slate-200 text-[9px] leading-tight">
+                    <span className="text-[#a80000] font-black uppercase tracking-wide">DELIVERY ADDRESS: </span>
+                    <span className="text-[#0047b3] font-bold whitespace-pre-line">{customDeliveryAddress}</span>
+                  </div>
+                )}
               </div>
 
               <div className="w-[41%] relative flex flex-col justify-between">
@@ -3324,20 +3326,22 @@
                          <div>
                            <div className="font-black text-[13.5px] uppercase text-black leading-snug">{customer?.name}</div>
                            <div className="mt-0.5 text-black leading-snug">{customer?.address}</div>
-                           <div className="font-extrabold mt-0.5 uppercase text-black">{customer?.country}</div>
-                         </div>
-
-                         <div className="flex justify-between items-end pt-2 mt-2 border-t border-slate-200">
-                           {hasCustomDelivery ? (
-                             <div className="text-[9px] leading-tight pr-2">
-                               <span className="text-[#a80000] font-black uppercase tracking-wide">DELIVERY ADDRESS: </span>
-                               <span className="text-[#0047b3] font-bold whitespace-pre-line">{customDeliveryAddress}</span>
-                             </div>
-                           ) : <div />}
-                           <div className="text-right font-extrabold text-black text-[10.5px] whitespace-nowrap ml-auto">
-                             VAT ID: {customer?.vatNo}
+                           <div className="flex justify-between items-baseline mt-1">
+                             <span className="font-extrabold uppercase text-black">{customer?.country}</span>
+                             {customer?.vatNo && (
+                               <span className="font-extrabold text-black text-[10.5px] whitespace-nowrap">
+                                 VAT ID: {customer.vatNo}
+                               </span>
+                             )}
                            </div>
                          </div>
+
+                         {hasCustomDelivery && (
+                           <div className="pt-2 mt-2 border-t border-slate-200 text-[9px] leading-tight">
+                             <span className="text-[#a80000] font-black uppercase tracking-wide">DELIVERY ADDRESS: </span>
+                             <span className="text-[#0047b3] font-bold whitespace-pre-line">{customDeliveryAddress}</span>
+                           </div>
+                         )}
                        </div>
 
                        <div className="w-[41%] relative flex flex-col justify-between">
