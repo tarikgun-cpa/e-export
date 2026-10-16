@@ -4320,20 +4320,22 @@
                   <table className="w-full text-left border-collapse" style={{tableLayout: 'fixed'}}>
                     <colgroup>
                       <col className="w-[4%]" />
-                      <col className="w-[15%]" />
-                      <col className="w-[13%]" />
-                      <col className="w-[16%]" />
-                      <col className="w-[5%]" />
-                      <col className="w-[9%]" />
-                      <col className="w-[10%]" />
-                      <col className="w-[6.5%]" />
-                      <col className="w-[6.5%]" />
+                      <col className="w-[8.5%]" />
+                      <col className="w-[13.5%]" />
+                      <col className="w-[11.5%]" />
+                      <col className="w-[14.5%]" />
+                      <col className="w-[4.5%]" />
+                      <col className="w-[8.5%]" />
+                      <col className="w-[9.5%]" />
                       <col className="w-[6%]" />
-                      <col className="w-[9%]" />
+                      <col className="w-[6%]" />
+                      <col className="w-[5.5%]" />
+                      <col className="w-[8%]" />
                     </colgroup>
                     <thead>
                       <tr className="bg-[#a80000] text-white font-bold text-[9.5px] uppercase tracking-wider">
                         <th className="border-r border-white/30 py-1.5 px-1 text-center">Sıra</th>
+                        <th className="border-r border-white/30 py-1.5 px-1.5">ADS İş No</th>
                         <th className="border-r border-white/30 py-1.5 px-1.5">Parça Adı</th>
                         <th className="border-r border-white/30 py-1.5 px-1.5">Sip. Ref No</th>
                         <th className="border-r border-white/30 py-1.5 px-1.5">Pos / Resim</th>
@@ -4358,6 +4360,7 @@
                         return (
                           <tr key={idx} className={`${rowBg} border-b border-slate-300`}>
                             <td className={`border-r border-slate-300 ${cellPad} text-center font-medium`}>{item.siraNo || idx + 1}</td>
+                            <td className={`border-r border-slate-300 ${cellPad} font-bold text-[#003d99] whitespace-nowrap`}>{item.adsIsNo || '-'}</td>
                             <td className={`border-r border-slate-300 ${cellPad} font-bold text-black truncate`}>{item.parcaAdi || '-'}</td>
                             <td className={`border-r border-slate-300 ${cellPad} font-mono text-slate-900 truncate`}>{item.sipRefNo || '-'}</td>
                             <td className={`border-r border-slate-300 ${cellPad} text-slate-900 whitespace-nowrap`}>
@@ -4392,7 +4395,7 @@
 
                     <tfoot className="bg-[#eef2f7] text-black font-bold border-t border-slate-300 text-[10px]">
                       <tr>
-                        <td colSpan={4} className="border-r border-slate-300 py-1.5 px-2 text-right uppercase tracking-wider font-extrabold text-[#003d99]">
+                        <td colSpan={5} className="border-r border-slate-300 py-1.5 px-2 text-right uppercase tracking-wider font-extrabold text-[#003d99]">
                           GENEL TOPLAM / TOTALS:
                         </td>
                         <td className="border-r border-slate-300 py-1.5 px-1 text-right font-extrabold text-black">
@@ -4418,21 +4421,30 @@
                 </div>
               </div>
 
+              {/* ALT 3 YETKİLİ KUTUSU (SON İŞLEM ŞEFİ, ÜRETİM KOORD., KALİTE MÜD.) */}
               <div className="grid grid-cols-3 gap-5 text-[10px] text-center pt-1 relative">
-                <div className="border border-slate-300 p-2.5 rounded-xl bg-white relative min-h-[75px] flex flex-col justify-between">
-                  <p className="font-extrabold text-[#0047b3] z-10 relative">TESLİM EDEN / EXPORTER</p>
-                  {exporter?.stamp && (
-                    <img src={exporter.stamp} className="mx-auto my-0.5 mix-blend-multiply opacity-90 object-contain" style={{ maxWidth: '150px', maxHeight: '52px' }} />
-                  )}
-                  <p className="text-[9px] text-slate-500 border-t border-dashed border-slate-300 w-3/4 mx-auto pt-0.5 z-10 relative">İmza & Kaşe</p>
+                <div className="border border-slate-300 rounded-xl bg-white overflow-hidden min-h-[82px] flex flex-col justify-between">
+                  <div className="bg-[#eef2f7] border-b border-slate-300 py-1 px-2">
+                    <span className="font-extrabold text-black">SON İŞLEM ŞEFİ</span> <span className="italic font-medium text-slate-700">/ FETTLING SHOP CHIEF</span>
+                  </div>
+                  <div className="font-bold text-black text-[11px] pt-1">İBRAHİM ALKAN</div>
+                  <p className="text-[9px] text-slate-400 border-t border-dashed border-slate-300 w-3/4 mx-auto py-1 mt-4">İmza / Signature</p>
                 </div>
-                <div className="border border-slate-300 p-2.5 rounded-xl bg-white min-h-[75px] flex flex-col justify-between">
-                  <p className="font-extrabold text-[#0047b3]">TAŞIYICI / CARRIER</p>
-                  <p className="text-[9px] text-slate-500 border-t border-dashed border-slate-300 w-3/4 mx-auto pt-0.5 mt-auto">İmza & Kaşe</p>
+
+                <div className="border border-slate-300 rounded-xl bg-white overflow-hidden min-h-[82px] flex flex-col justify-between">
+                  <div className="bg-[#eef2f7] border-b border-slate-300 py-1 px-2">
+                    <span className="font-extrabold text-black">ÜRETİM KOORD.</span> <span className="italic font-medium text-slate-700">/ PRODUCTION COORD.</span>
+                  </div>
+                  <div className="font-bold text-black text-[11px] pt-1">HAYKAN ENGİN</div>
+                  <p className="text-[9px] text-slate-400 border-t border-dashed border-slate-300 w-3/4 mx-auto py-1 mt-4">İmza / Signature</p>
                 </div>
-                <div className="border border-slate-300 p-2.5 rounded-xl bg-white min-h-[75px] flex flex-col justify-between">
-                  <p className="font-extrabold text-[#0047b3]">TESLİM ALAN / CONSIGNEE</p>
-                  <p className="text-[9px] text-slate-500 border-t border-dashed border-slate-300 w-3/4 mx-auto pt-0.5 mt-auto">İmza & Kaşe</p>
+
+                <div className="border border-slate-300 rounded-xl bg-white overflow-hidden min-h-[82px] flex flex-col justify-between">
+                  <div className="bg-[#eef2f7] border-b border-slate-300 py-1 px-2">
+                    <span className="font-extrabold text-black">KALİTE MÜD.</span> <span className="italic font-medium text-slate-700">/ QUALITY MANAGER</span>
+                  </div>
+                  <div className="font-bold text-black text-[11px] pt-1">METE HAN BOYDAK</div>
+                  <p className="text-[9px] text-slate-400 border-t border-dashed border-slate-300 w-3/4 mx-auto py-1 mt-4">İmza / Signature</p>
                 </div>
               </div>
             </div>
