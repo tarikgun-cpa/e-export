@@ -1630,6 +1630,7 @@
       const [deliveryAddress, setDeliveryAddress] = useState(initialData?.deliveryAddress || '');
       const [selectedBankId, setSelectedBankId] = useState(initialData?.selectedBankId || '');
       const [selectedInsuranceId, setSelectedInsuranceId] = useState(initialData?.selectedInsuranceId || '');
+      const [customsDescriptionTR, setCustomsDescriptionTR] = useState(initialData?.customsDescriptionTR || 'Çelik Dökümden Mamül Aşınır Parça');
       const [hasDownPayment, setHasDownPayment] = useState(initialData?.hasDownPayment || false);
       const [downPaymentRate, setDownPaymentRate] = useState(initialData?.downPaymentRate ?? 30);
       const [isFreeOfCharge, setIsFreeOfCharge] = useState(initialData?.isFreeOfCharge || false);
@@ -2031,6 +2032,7 @@
           deliveryAddress,
           selectedBankId,
           selectedInsuranceId,
+          customsDescriptionTR: customsDescriptionTR.trim(),
           hasDownPayment,
           downPaymentRate: Number(downPaymentRate) || 0,
           isFreeOfCharge,
@@ -2104,6 +2106,10 @@
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">SEVK ADRESİ</label>
                 <input type="text" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Adres..." />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-indigo-700 mb-1">MALIN TÜRKÇE GÜMRÜK TANIMI (TR e-FATURA)</label>
+                <input type="text" className="w-full px-3 py-1.5 border border-indigo-300 rounded-lg outline-none text-sm font-semibold text-indigo-900 bg-indigo-50/40 focus:bg-white" value={customsDescriptionTR} onChange={e => setCustomsDescriptionTR(e.target.value)} placeholder="Örn: Çelik Dökümden Mamül Aşınır Parça" />
               </div>
               <div className="flex items-center gap-4 bg-white px-3 py-1.5 border rounded-lg md:col-span-2">
                 <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
@@ -3099,6 +3105,16 @@
       const [isFreeOfCharge, setIsFreeOfCharge] = useState(checklist?.isFreeOfCharge || false);
       const [deliveryDate, setDeliveryDate] = useState(checklist?.deliveryDate || '');
       const [customDeliveryAddress, setCustomDeliveryAddress] = useState(checklist?.deliveryAddress || '');
+      const [customsDescTR, setCustomsDescTR] = useState(checklist?.customsDescriptionTR || 'Çelik Dökümden Mamül Aşınır Parça');
+      const [copiedKey, setCopiedKey] = useState(null);
+
+      const copyText = (text, key) => {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(String(text));
+          setCopiedKey(key);
+          setTimeout(() => setCopiedKey(null), 1500);
+        }
+      };
 
       const items = checklist?.items || [];
       const processedRows = useMemo(() => processTableRows(items), [items]);
@@ -3173,7 +3189,8 @@
         { id: 'workOrder', label: 'İş Emri' },
         { id: 'transport', label: 'Nakliye Talimatı' },
         { id: 'insurance', label: 'Sigorta Talimatı' },
-        { id: 'atr', label: 'A.TR Belgesi' }
+        { id: 'atr', label: 'A.TR Belgesi' },
+        { id: 'trInvoice', label: 'TR e-Fatura (GİB Kopyala)' }
       ];
 
       const StampImage = ({ className = '', maxW = '200px', maxH = '100px' }) => {
@@ -4221,6 +4238,196 @@
                       </div>
                     </div>
                     
+                  </div>
+                </div>
+              )}
+
+              {/* ========================================================================= */}
+              {/* 7. TR e-FATURA (GİB İHRACAT e-FATURA KOPYALAMA & AKTARIM EKRANI) */}
+              {/* ========================================================================= */}
+              {activeTab === 'trInvoice' && (
+                <div className="bg-white p-6 mx-auto w-full shadow-lg rounded-xl border border-slate-300 max-w-[1000px] font-sans text-black">
+                  <div className="flex flex-wrap justify-between items-center gap-4 border-b border-slate-200 pb-4 mb-4">
+                    <div>
+                      <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                        <FileSpreadsheet className="text-[#a80000] w-6 h-6" />
+                        TR İhracat e-Fatura Veri Kopyalama Tablosu (GİB Uyumlu)
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Format: <strong>Malın Gümrük Tanımı + [ADS İş No, Parça Adı, Sip. Ref No, Resim No]</strong>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 no-print">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allLines = items.map((item, idx) => {
+                            const adet = parseFloat(item.adet) || 0;
+                            const fiyat = parseFloat(item.fiyat) || 0;
+                            const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
+                            const bracketParts = [item.adsIsNo, item.parcaAdi, item.sipRefNo, cleanDrawingNo(item.resimNo)].map(s => String(s || '').trim()).filter(Boolean).join(', ');
+                            const desc = `${customsDescTR.trim()} [${bracketParts}]`.trim();
+                            return `${idx + 1}\t${desc}\t${adet}\t${fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\t${tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                          }).join('\n');
+                          copyText(allLines, 'all-table');
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-colors"
+                      >
+                        {copiedKey === 'all-table' ? '✓ Tüm Tablo Kopyalandı!' : 'Tüm Tabloyu Kopyala'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!window.XLSX) return;
+                          const rows = [
+                            ["SIRA NO", "MAL / HİZMET AÇIKLAMASI (GİB TR-FATURA)", "MİKTAR (ADET)", `BİRİM FİYAT (${currency})`, `TOPLAM TUTAR (${currency})`],
+                            ...items.map((item, idx) => {
+                              const adet = parseFloat(item.adet) || 0;
+                              const fiyat = parseFloat(item.fiyat) || 0;
+                              const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
+                              const bracketParts = [item.adsIsNo, item.parcaAdi, item.sipRefNo, cleanDrawingNo(item.resimNo)].map(s => String(s || '').trim()).filter(Boolean).join(', ');
+                              const desc = `${customsDescTR.trim()} [${bracketParts}]`.trim();
+                              return [idx + 1, desc, adet, Number(fiyat.toFixed(2)), Number(tutar.toFixed(2))];
+                            })
+                          ];
+                          const ws = window.XLSX.utils.aoa_to_sheet(rows);
+                          ws['!cols'] = [{ wch: 8 }, { wch: 75 }, { wch: 14 }, { wch: 18 }, { wch: 18 }];
+                          const wb = window.XLSX.utils.book_new();
+                          window.XLSX.utils.book_append_sheet(wb, ws, "TR_eFatura");
+                          window.XLSX.writeFile(wb, `TR_eFatura_${checklist?.invoiceNumber || 'Taslak'}.xlsx`);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                      >
+                        <Download size={14} /> Excel İndir (.xlsx)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Türkçe Gümrük Tanımı Düzenleme Kutusu */}
+                  <div className="mb-4 bg-[#eef2f7] border border-slate-300 rounded-xl p-3 flex flex-wrap items-center gap-3">
+                    <label className="text-xs font-extrabold text-[#003d99] uppercase whitespace-nowrap">
+                      Malın Türkçe Gümrük Tanımı:
+                    </label>
+                    <input
+                      type="text"
+                      value={customsDescTR}
+                      onChange={e => setCustomsDescTR(e.target.value)}
+                      className="flex-1 min-w-[260px] px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-black bg-white outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Örn: Çelik Dökümden Mamül Aşınır Parça"
+                    />
+                    <span className="text-[11px] text-slate-500">
+                      (Değiştirdiğinizde aşağıdaki tüm satır açıklamaları anında güncellenir)
+                    </span>
+                  </div>
+
+                  {/* TR e-Fatura Satır Tablosu */}
+                  <div className="border border-slate-300 rounded-xl overflow-hidden">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-[#a80000] text-white font-extrabold uppercase tracking-wider text-[10.5px]">
+                          <th className="py-2.5 px-2 text-center w-12 border-r border-white/25">Sıra</th>
+                          <th className="py-2.5 px-3 border-r border-white/25">
+                            Satır Açıklaması (Malın Gümrük Tanımı + [ADS İş No, Parça Adı, Sip. Ref No, Resim No])
+                          </th>
+                          <th className="py-2.5 px-2.5 text-right w-24 border-r border-white/25">Adet</th>
+                          <th className="py-2.5 px-2.5 text-right w-32 border-r border-white/25">Birim Fiyat</th>
+                          <th className="py-2.5 px-2.5 text-right w-36 border-r border-white/25">Tutar</th>
+                          <th className="py-2.5 px-2 text-center w-24 no-print">Kopyala</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {items.map((item, idx) => {
+                          const adet = parseFloat(item.adet) || 0;
+                          const fiyat = parseFloat(item.fiyat) || 0;
+                          const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
+                          const cleanedDwg = cleanDrawingNo(item.resimNo);
+                          const bracketParts = [item.adsIsNo, item.parcaAdi, item.sipRefNo, cleanedDwg]
+                            .map(s => String(s || '').trim())
+                            .filter(Boolean)
+                            .join(', ');
+                          const trLineDesc = `${customsDescTR.trim()} [${bracketParts}]`.trim();
+                          const fiyatFormatted = fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          const tutarFormatted = tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          const isEven = idx % 2 === 1;
+
+                          return (
+                            <tr key={idx} className={`${isEven ? 'bg-[#eef2f7]' : 'bg-white'} hover:bg-blue-50/60 transition-colors`}>
+                              <td className="py-2 px-2 text-center font-bold text-slate-600 border-r border-slate-300">
+                                {idx + 1}
+                              </td>
+                              <td className="py-2 px-3 font-bold text-black border-r border-slate-300">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="select-all">{trLineDesc}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyText(trLineDesc, `desc-${idx}`)}
+                                    className={`no-print shrink-0 px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                                      copiedKey === `desc-${idx}`
+                                        ? 'bg-emerald-600 text-white border-emerald-600'
+                                        : 'bg-white hover:bg-slate-100 text-indigo-700 border-slate-300'
+                                    }`}
+                                    title="Sadece Açıklamayı Kopyala"
+                                  >
+                                    {copiedKey === `desc-${idx}` ? '✓ Kopyalandı' : 'Açıklamayı Kopyala'}
+                                  </button>
+                                </div>
+                              </td>
+                              <td
+                                onClick={() => copyText(adet, `qty-${idx}`)}
+                                className="py-2 px-2.5 text-right font-extrabold text-black border-r border-slate-300 cursor-pointer hover:bg-indigo-50"
+                                title="Tıkla Kopyala"
+                              >
+                                {copiedKey === `qty-${idx}` ? <span className="text-emerald-600">✓ {adet}</span> : `${adet} ADET`}
+                              </td>
+                              <td
+                                onClick={() => copyText(fiyatFormatted, `price-${idx}`)}
+                                className="py-2 px-2.5 text-right font-semibold text-black border-r border-slate-300 cursor-pointer hover:bg-indigo-50 whitespace-nowrap"
+                                title="Tıkla Kopyala"
+                              >
+                                {copiedKey === `price-${idx}` ? <span className="text-emerald-600 font-bold">✓ {fiyatFormatted}</span> : `${fiyatFormatted} ${getSymbol(currency)}`}
+                              </td>
+                              <td
+                                onClick={() => copyText(tutarFormatted, `tot-${idx}`)}
+                                className="py-2 px-2.5 text-right font-extrabold text-[#a80000] border-r border-slate-300 cursor-pointer hover:bg-indigo-50 whitespace-nowrap"
+                                title="Tıkla Kopyala"
+                              >
+                                {copiedKey === `tot-${idx}` ? <span className="text-emerald-600">✓ {tutarFormatted}</span> : `${tutarFormatted} ${getSymbol(currency)}`}
+                              </td>
+                              <td className="py-2 px-2 text-center no-print">
+                                <button
+                                  type="button"
+                                  onClick={() => copyText(`${trLineDesc}\t${adet}\t${fiyatFormatted}\t${tutarFormatted}`, `row-${idx}`)}
+                                  className={`px-2.5 py-1 rounded text-[10px] font-bold transition-colors ${
+                                    copiedKey === `row-${idx}`
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-slate-800 hover:bg-slate-700 text-white'
+                                  }`}
+                                >
+                                  {copiedKey === `row-${idx}` ? '✓ Satır' : 'Satırı Kopyala'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-slate-900 text-white font-extrabold text-xs">
+                        <tr>
+                          <td colSpan={2} className="py-2.5 px-3 text-right uppercase tracking-wider text-slate-300 border-r border-slate-700">
+                            TR e-FATURA GENEL TOPLAM:
+                          </td>
+                          <td className="py-2.5 px-2.5 text-right text-amber-400 border-r border-slate-700 whitespace-nowrap">
+                            {totals?.totalAdet?.toLocaleString('tr-TR')} ADET
+                          </td>
+                          <td className="py-2.5 px-2.5 border-r border-slate-700"></td>
+                          <td className="py-2.5 px-2.5 text-right text-emerald-400 border-r border-slate-700 whitespace-nowrap">
+                            {totals?.totalTutar?.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {getSymbol(currency)}
+                          </td>
+                          <td className="no-print"></td>
+                        </tr>
+                      </tfoot>
+                    </table>
                   </div>
                 </div>
               )}
