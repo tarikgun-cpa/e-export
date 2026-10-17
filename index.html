@@ -3900,7 +3900,7 @@
                         <span className="text-slate-300">|</span>
                         <label className="flex items-center gap-1 font-bold text-red-700 cursor-pointer">
                           <input type="checkbox" checked={hasDownPayment} onChange={e => setHasDownPayment(e.target.checked)} className="w-3.5 h-3.5 accent-red-600" />
-                          Peşinat%
+                          DP %
                         </label>
                         {hasDownPayment && (
                           <input 
@@ -3923,7 +3923,7 @@
                   <button type="button" onClick={() => window.print()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg font-bold flex items-center shadow-md transition-colors text-xs">
                     <Printer size={15} className="mr-1" /> Yazdır
                   </button>
-                  <button type="button" onClick={onClose} className="bg-slate-300 text-slate-700 hover:bg-slate-400 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors">Kapat</button>
+                  <button type="button" onClick={onClose} className="bg-slate-300 text-slate-700 hover:bg-slate-400 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors">X</button>
                 </div>
               </div>
 
@@ -3932,7 +3932,7 @@
                 <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex flex-wrap items-center gap-3 text-xs">
                   <span className="font-extrabold text-[#003d99] uppercase flex items-center gap-1">
                     <CarrierBadge transporter={transporter} />
-                    <span>Sigorta Sevk Detayları ({isSeaTransport ? 'Denizyolu' : 'Karayolu'}):</span>
+                    <span>Sigorta ({isSeaTransport ? 'Denizyolu' : 'Karayolu'}):</span>
                   </span>
 
                   {isSeaTransport ? (
@@ -5442,7 +5442,7 @@
                 <button type="button" onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-bold flex items-center shadow-md">
                   <Printer size={18} className="mr-2" /> Yazdır
                 </button>
-                <button type="button" onClick={onClose} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium">Kapat</button>
+                <button type="button" onClick={onClose} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium">X</button>
               </div>
             </div>
 
