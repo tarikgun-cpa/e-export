@@ -1716,6 +1716,15 @@
       const [downPaymentRate, setDownPaymentRate] = useState(initialData?.downPaymentRate ?? 30);
       const [isFreeOfCharge, setIsFreeOfCharge] = useState(initialData?.isFreeOfCharge || false);
       const [items, setItems] = useState(initialData?.items || []);
+      const [isExcelLoading, setIsExcelLoading] = useState(false);
+
+      const [currentPage, setCurrentPage] = useState(1);
+      const [pageSize, setPageSize] = useState(50);
+
+      const [selectedIds, setSelectedIds] = useState([]);
+      const [groupPalletNo, setGroupPalletNo] = useState('');
+      const [groupPalletEbat, setGroupPalletEbat] = useState('');
+      const [groupBrutKg, setGroupBrutKg] = useState('');
 
       const handleAddExtraCharge = (presetName = '') => {
         setExtraCharges(prev => [
@@ -1740,15 +1749,6 @@
       const handleRemoveExtraCharge = (id) => {
         setExtraCharges(prev => prev.filter(ec => ec.id !== id));
       };
-      const [isExcelLoading, setIsExcelLoading] = useState(false);
-
-      const [currentPage, setCurrentPage] = useState(1);
-      const [pageSize, setPageSize] = useState(50);
-
-      const [selectedIds, setSelectedIds] = useState([]);
-      const [groupPalletNo, setGroupPalletNo] = useState('');
-      const [groupPalletEbat, setGroupPalletEbat] = useState('');
-      const [groupBrutKg, setGroupBrutKg] = useState('');
 
       const processedRows = useMemo(() => processTableRows(items), [items]);
       const totals = useMemo(() => calculateTotals(items, processedRows), [items, processedRows]);
@@ -2155,215 +2155,211 @@
       };
 
       return (
-        <div className="flex flex-col h-full bg-white z-20 overflow-hidden">
-          <div className="bg-slate-900 text-white p-4 flex justify-between items-center shadow-md shrink-0">
-            <div className="flex items-center">
-              <button type="button" onClick={onBack} className="mr-4 p-2 hover:bg-slate-800 rounded-full text-slate-300 hover:text-white">
-                <ArrowLeft size={24} />
+        <div className="flex flex-col h-full bg-slate-100 z-20 overflow-hidden">
+          {/* ÜST BAŞLIK BARI */}
+          <div className="bg-slate-900 text-white px-5 py-2.5 flex justify-between items-center shadow-md shrink-0">
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={onBack} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors">
+                <ArrowLeft size={20} />
               </button>
-              <h2 className="text-xl font-bold flex items-center">
-                <FileSpreadsheet className="mr-2 text-blue-400" /> {initialData ? 'Evrak Düzenle' : 'Yeni Evrak / Check List Oluştur'}
+              <h2 className="text-base font-bold flex items-center tracking-wide">
+                <FileSpreadsheet className="mr-2 text-blue-400 w-5 h-5" /> {initialData ? 'Evrak / Check List Düzenle' : 'Yeni Evrak / Check List Oluştur'}
               </h2>
             </div>
-            <div className="text-slate-400 text-sm">İhracatçı: <span className="text-white font-medium">{exporter.name}</span></div>
+            <div className="flex items-center gap-4">
+              <div className="text-slate-400 text-xs">İhracatçı: <span className="text-white font-bold">{exporter.name}</span></div>
+              <button type="button" onClick={handleSave} className="px-5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center shadow-md transition-colors">
+                <Save size={15} className="mr-1.5" /> Evrakı Kaydet
+              </button>
+            </div>
           </div>
 
-          <div className="p-4 border-b border-gray-200 bg-slate-50 shrink-0 max-h-[46vh] overflow-y-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-2.5">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">FATURA NO *</label>
-                <input type="text" className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs font-bold" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="INV-2026-001" />
+          {/* KURUMSAL KOMPAKT ERP VERİ GİRİŞ PANELİ */}
+          <div className="bg-white border-b border-slate-200 px-5 py-3 shrink-0 shadow-sm space-y-2.5">
+            
+            {/* 1. SATIR: TEMEL FATURA, TARİH, DÖVİZ, MÜŞTERİ, NAKLİYECİ (12 Sütunlu Kompakt Grid) */}
+            <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-2.5 items-end">
+              <div className="lg:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Fatura No *</label>
+                <input type="text" className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md outline-none text-xs font-extrabold text-blue-900 focus:border-blue-600 bg-slate-50/50 focus:bg-white" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="ADS2026..." />
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">TARİH</label>
-                <input type="date" className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={checklistDate} onChange={e => setChecklistDate(e.target.value)} />
+              <div className="lg:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Fatura Tarihi</label>
+                <input type="date" className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs font-semibold bg-white focus:border-blue-600" value={checklistDate} onChange={e => setChecklistDate(e.target.value)} />
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">DÖVİZ</label>
-                <select className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white font-bold" value={currency} onChange={e => setCurrency(e.target.value)}>
+              <div className="lg:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Teslim Tarihi (Delivery)</label>
+                <input type="date" className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs font-semibold bg-white focus:border-blue-600" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
+              </div>
+              <div className="lg:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Döviz</label>
+                <select className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs bg-white font-extrabold text-slate-800 focus:border-blue-600" value={currency} onChange={e => setCurrency(e.target.value)}>
                   <option value="EUR">EUR (€)</option><option value="USD">USD ($)</option><option value="TRY">TRY (₺)</option><option value="GBP">GBP (£)</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">MÜŞTERİ *</label>
-                <select className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={customerId} onChange={e => setCustomerId(e.target.value)}>
-                  <option value="">-- Seçin --</option>
+              <div className="lg:col-span-3">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Müşteri (Consignee) *</label>
+                <select className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md outline-none text-xs font-bold text-slate-800 bg-white focus:border-blue-600" value={customerId} onChange={e => setCustomerId(e.target.value)}>
+                  <option value="">-- Müşteri Seçin --</option>
                   {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">NAKLİYECİ</label>
-                <select className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={transporterId} onChange={e => setTransporterId(e.target.value)}>
-                  <option value="">-- Seçin --</option>
+              <div className="lg:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Nakliyeci (Carrier)</label>
+                <select className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md outline-none text-xs font-semibold text-slate-800 bg-white focus:border-blue-600" value={transporterId} onChange={e => setTransporterId(e.target.value)}>
+                  <option value="">-- Nakliyeci Seçin --</option>
                   {transporters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">BANKA HESABI</label>
-                <select className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={selectedBankId} onChange={e => setSelectedBankId(e.target.value)}>
-                  <option value="">-- Otomatik Seç --</option>
+            </div>
+
+            {/* 2. SATIR: BANKA, SİGORTA, KONTEYNER TAKİP, TR TANIM, SEVK ADRESİ & ÖZEL NOT */}
+            <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-2.5 items-end">
+              <div className="lg:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Banka Hesabı</label>
+                <select className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs bg-white" value={selectedBankId} onChange={e => setSelectedBankId(e.target.value)}>
+                  <option value="">-- Otomatik ({currency}) --</option>
                   {exporter?.banks?.map(b => <option key={b.id} value={b.id}>{b.bankName} ({b.currency})</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">SİGORTA ACENTESİ</label>
-                <select className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={selectedInsuranceId} onChange={e => setSelectedInsuranceId(e.target.value)}>
+              <div className="lg:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Sigorta Acentesi</label>
+                <select className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs bg-white" value={selectedInsuranceId} onChange={e => setSelectedInsuranceId(e.target.value)}>
                   <option value="">-- Acente Seçin --</option>
                   {exporter?.insurances?.map(i => <option key={i.id} value={i.id}>{i.agencyName}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">TESLİM TARİHİ (DELIVERY DATE)</label>
-                <input type="date" className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
+              <div className="lg:col-span-1">
+                <label className="block text-[10px] font-bold text-red-700 uppercase tracking-wider mb-0.5">Shipment No</label>
+                <input type="text" className="w-full px-2 py-1.5 border border-red-200 rounded-md outline-none text-xs font-bold text-red-800 bg-red-50/40 focus:bg-white" value={shipmentNo} onChange={e => setShipmentNo(e.target.value)} placeholder="Örn: 23" />
+              </div>
+              <div className="lg:col-span-2">
+                <label className="block text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-0.5">Booking No</label>
+                <input type="text" className="w-full px-2 py-1.5 border border-blue-200 rounded-md outline-none text-xs font-bold text-blue-900 bg-blue-50/40 focus:bg-white" value={bookingNo} onChange={e => setBookingNo(e.target.value)} placeholder="ZIMUIST..." />
+              </div>
+              <div className="lg:col-span-2">
+                <label className="block text-[10px] font-bold text-sky-800 uppercase tracking-wider mb-0.5">📦 Container No</label>
+                <input type="text" className="w-full px-2 py-1.5 border border-sky-200 rounded-md outline-none text-xs font-bold text-sky-900 bg-sky-50/40 focus:bg-white" value={containerNo} onChange={e => setContainerNo(e.target.value)} placeholder="JXLU..." />
+              </div>
+              <div className="lg:col-span-1">
+                <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-0.5" title="GİB TR e-Fatura Satır Başlığı">TR Gümrük Tanımı</label>
+                <input type="text" className="w-full px-2 py-1.5 border border-indigo-200 rounded-md outline-none text-xs font-bold text-indigo-900 bg-indigo-50/40 focus:bg-white" value={customsDescriptionTR} onChange={e => setCustomsDescriptionTR(e.target.value)} placeholder="Yatak / Boru" />
+              </div>
+              <div className="lg:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Sevk Adresi</label>
+                <input type="text" className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Farklı adres..." />
+              </div>
+              <div className="lg:col-span-1">
+                <label className="block text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-0.5">📌 Nakliye Notu</label>
+                <input type="text" className="w-full px-2 py-1.5 border border-amber-300 rounded-md outline-none text-xs font-semibold text-amber-950 bg-amber-50/40 focus:bg-white" value={specialNote} onChange={e => setSpecialNote(e.target.value)} placeholder="Customs support..." />
+              </div>
+            </div>
+
+            {/* 3. SATIR: VERGİ / PEŞİNAT / EK MALİYETLER & TABLO AKSİYON BARI (Tek Kompakt Şerit) */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-200">
+              {/* Sol: Satır Ekle, Şablon, Excel ve Ek Maliyet Kısayolları */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button type="button" onClick={handleAddRow} className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-md text-xs font-bold flex items-center shadow-sm">
+                  <Plus size={14} className="mr-1" /> Satır Ekle
+                </button>
+                <div className="relative inline-block">
+                  <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} disabled={isExcelLoading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                  <button type="button" className={`px-3 py-1.5 text-white rounded-md text-xs font-bold flex items-center shadow-sm ${isExcelLoading ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                    {isExcelLoading ? <Loader2 className="mr-1 w-3.5 h-3.5" /> : <Upload size={14} className="mr-1" />}
+                    {isExcelLoading ? 'Yükleniyor...' : 'Excel Yükle'}
+                  </button>
+                </div>
+                <button type="button" onClick={handleDownloadTemplate} className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-2.5 py-1.5 rounded-md text-[11px] font-semibold flex items-center">
+                  <Download size={13} className="mr-1" /> Şablon
+                </button>
+
+                <span className="text-slate-300 mx-0.5">|</span>
+
+                <span className="text-[11px] font-extrabold text-indigo-900">Ek Maliyet:</span>
+                <button type="button" onClick={() => handleAddExtraCharge('Freight')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold">+ Freight</button>
+                <button type="button" onClick={() => handleAddExtraCharge('Pattern Cost')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold">+ Pattern</button>
+                <button type="button" onClick={() => handleAddExtraCharge('Machining Cost')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold">+ Machining</button>
+                <button type="button" onClick={() => handleAddExtraCharge('Quality Control Costs')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold">+ Quality</button>
               </div>
 
-              {/* KONTEYNER VE SEVKİYAT TAKİP ALANLARI */}
-              <div>
-                <label className="block text-[11px] font-bold text-red-700 mb-0.5">SHIPMENT NO</label>
-                <input type="text" className="w-full px-2.5 py-1 border border-red-200 rounded-lg outline-none text-xs font-bold text-red-800 bg-red-50/30 focus:bg-white" value={shipmentNo} onChange={e => setShipmentNo(e.target.value)} placeholder="Örn: Shipment No. 23" />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-blue-800 mb-0.5">BOOKING NO</label>
-                <input type="text" className="w-full px-2.5 py-1 border border-blue-200 rounded-lg outline-none text-xs font-bold text-blue-900 bg-blue-50/30 focus:bg-white" value={bookingNo} onChange={e => setBookingNo(e.target.value)} placeholder="Örn: Booking ELK20262456" />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-sky-800 mb-0.5">📦 CONTAINER NO</label>
-                <input type="text" className="w-full px-2.5 py-1 border border-sky-200 rounded-lg outline-none text-xs font-bold text-sky-900 bg-sky-50/30 focus:bg-white" value={containerNo} onChange={e => setContainerNo(e.target.value)} placeholder="Örn: ZIMUIST26808847" />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-indigo-700 mb-0.5">TÜRKÇE GÜMRÜK TANIMI (TR e-FATURA)</label>
-                <input type="text" className="w-full px-2.5 py-1 border border-indigo-300 rounded-lg outline-none text-xs font-semibold text-indigo-900 bg-indigo-50/40 focus:bg-white" value={customsDescriptionTR} onChange={e => setCustomsDescriptionTR(e.target.value)} placeholder="Örn: Yatak" />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">FARKLI SEVK ADRESİ (DELIVERY ADDRESS)</label>
-                <input type="text" className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Müşteri adresinden farklıysa yazın..." />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-[11px] font-bold text-amber-800 mb-0.5">📌 ÖZEL NOT / UYARI (NAKLİYE TALİMATINDA BELİRTİLİR)</label>
-                <input type="text" className="w-full px-2.5 py-1 border border-amber-300 rounded-lg outline-none text-xs font-semibold text-amber-950 bg-amber-50/40 focus:bg-white" value={specialNote} onChange={e => setSpecialNote(e.target.value)} placeholder="Örn: 📌 Customs support Marketing 19 6921 RE Duiven The Netherlands" />
-              </div>
-
-              {/* DUTY FEE, DOWN PAYMENT VE BEDELSİZ SEÇENEKLERİ */}
-              <div className="flex flex-wrap items-center gap-4 bg-white px-3 py-1.5 border rounded-lg md:col-span-4">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-rose-700 cursor-pointer">
-                  <input type="checkbox" checked={hasDutyFee} onChange={e => setHasDutyFee(e.target.checked)} className="w-4 h-4 accent-rose-600" />
-                  ABD / Gümrük Duty Fee Uygula (Sadece Malzeme Tutarından)
+              {/* Sağ: ABD Duty Fee, Down Payment, Bedelsiz ve Sayfalama */}
+              <div className="flex flex-wrap items-center gap-2.5 bg-slate-50 px-3 py-1 rounded-md border border-slate-200 text-xs">
+                <label className="flex items-center gap-1 font-bold text-rose-700 cursor-pointer" title="Sadece Malzeme Toplamından Hesaplanır">
+                  <input type="checkbox" checked={hasDutyFee} onChange={e => setHasDutyFee(e.target.checked)} className="w-3.5 h-3.5 accent-rose-600" />
+                  ABD Duty
                 </label>
                 {hasDutyFee && (
-                  <div className="flex items-center gap-2 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                    <span className="text-[11px] font-bold text-rose-800">Oran (%):</span>
-                    <input type="number" step="0.01" value={dutyFeeRate} onChange={e => setDutyFeeRate(e.target.value)} className="w-16 px-1.5 py-0.5 border rounded text-xs font-black text-rose-700 text-center bg-white" />
-                    <input type="text" value={dutyFeeLabel} onChange={e => setDutyFeeLabel(e.target.value)} placeholder={`RECIP TR ${String(dutyFeeRate).replace('.', ',')} % DUTY`} className="w-44 px-2 py-0.5 border rounded text-xs font-bold text-rose-900 bg-white" title="Faturada görünecek Duty açıklaması" />
+                  <div className="flex items-center gap-1">
+                    <input type="number" step="0.01" value={dutyFeeRate} onChange={e => setDutyFeeRate(e.target.value)} className="w-12 px-1 py-0.5 border border-rose-300 rounded text-[11px] font-black text-rose-700 text-center bg-white" />
+                    <span className="text-[10px] font-bold text-rose-700">%</span>
+                    <input type="text" value={dutyFeeLabel} onChange={e => setDutyFeeLabel(e.target.value)} placeholder={`RECIP TR ${String(dutyFeeRate).replace('.', ',')} % DUTY`} className="w-36 px-1.5 py-0.5 border border-rose-200 rounded text-[11px] font-bold text-rose-900 bg-white" />
                   </div>
                 )}
 
                 <span className="text-slate-300">|</span>
 
-                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
-                  <input type="checkbox" checked={hasDownPayment} onChange={e => setHasDownPayment(e.target.checked)} className="w-4 h-4 accent-red-600" />
-                  Down Payment (Peşinat)
+                <label className="flex items-center gap-1 font-bold text-slate-700 cursor-pointer">
+                  <input type="checkbox" checked={hasDownPayment} onChange={e => setHasDownPayment(e.target.checked)} className="w-3.5 h-3.5 accent-red-600" />
+                  Peşinat
                 </label>
                 {hasDownPayment && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-slate-500">Oran (%):</span>
-                    <input type="number" min="0" max="100" step="1" value={downPaymentRate} onChange={e => setDownPaymentRate(e.target.value)} className="w-14 px-1.5 py-0.5 border rounded text-xs font-bold text-red-600 text-center" />
+                  <div className="flex items-center gap-0.5">
+                    <input type="number" min="0" max="100" value={downPaymentRate} onChange={e => setDownPaymentRate(e.target.value)} className="w-12 px-1 py-0.5 border rounded text-[11px] font-bold text-red-600 text-center bg-white" />
+                    <span className="text-[10px] font-bold text-slate-500">%</span>
                   </div>
                 )}
 
-                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer ml-auto">
-                  <input type="checkbox" checked={isFreeOfCharge} onChange={e => setIsFreeOfCharge(e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                <span className="text-slate-300">|</span>
+
+                <label className="flex items-center gap-1 font-bold text-slate-700 cursor-pointer">
+                  <input type="checkbox" checked={isFreeOfCharge} onChange={e => setIsFreeOfCharge(e.target.checked)} className="w-3.5 h-3.5 accent-blue-600" />
                   Bedelsiz
                 </label>
-              </div>
 
-              {/* EK MALİYET KALEMLERİ (FREIGHT, PATTERN, MACHINING, QUALITY CONTROL VB.) */}
-              <div className="md:col-span-4 bg-indigo-50/60 border border-indigo-200 rounded-lg p-2.5">
-                <div className="flex flex-wrap justify-between items-center gap-2">
-                  <div className="text-xs font-extrabold text-indigo-950 flex items-center gap-1.5">
-                    <span>➕ Fatura Ek Maliyet Kalemleri (Sadece Invoice'ta görünür, Çeki Listesine ve Ağırlığa girmez):</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button type="button" onClick={() => handleAddExtraCharge('Freight')} className="bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 px-2.5 py-1 rounded text-[11px] font-bold shadow-sm">+ Freight</button>
-                    <button type="button" onClick={() => handleAddExtraCharge('Pattern Cost')} className="bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 px-2.5 py-1 rounded text-[11px] font-bold shadow-sm">+ Pattern</button>
-                    <button type="button" onClick={() => handleAddExtraCharge('Machining Cost')} className="bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 px-2.5 py-1 rounded text-[11px] font-bold shadow-sm">+ Machining</button>
-                    <button type="button" onClick={() => handleAddExtraCharge('Quality Control Costs')} className="bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 px-2.5 py-1 rounded text-[11px] font-bold shadow-sm">+ Quality Control</button>
-                    <button type="button" onClick={() => handleAddExtraCharge('')} className="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded text-[11px] font-bold shadow-sm">+ Özel Maliyet Satırı</button>
-                  </div>
-                </div>
-
-                {extraCharges.length > 0 && (
-                  <div className="mt-2 space-y-1.5">
-                    {extraCharges.map((ec) => (
-                      <div key={ec.id} className="grid grid-cols-[140px_1fr_80px_120px_120px_32px] gap-2 items-center bg-white p-1.5 rounded border border-indigo-200 text-xs">
-                        <input type="text" placeholder="Order No (Opsiyonel)" value={ec.sipRefNo || ''} onChange={e => handleExtraChargeChange(ec.id, 'sipRefNo', e.target.value)} className="px-2 py-1 border rounded text-xs outline-none" />
-                        <input type="text" placeholder="Maliyet Açıklaması (Örn: Freight, Pattern, Machining...)" value={ec.description || ''} onChange={e => handleExtraChargeChange(ec.id, 'description', e.target.value)} className="px-2 py-1 border rounded text-xs font-bold text-indigo-950 outline-none" />
-                        <input type="number" placeholder="Adet" value={ec.adet ?? 1} onChange={e => handleExtraChargeChange(ec.id, 'adet', e.target.value)} className="px-2 py-1 border rounded text-xs text-center font-bold outline-none" />
-                        <input type="text" placeholder={`Birim Fiyat (${currency})`} value={ec.fiyat ?? ''} onChange={e => handleExtraChargeChange(ec.id, 'fiyat', e.target.value)} className="px-2 py-1 border rounded text-xs text-right font-semibold outline-none" />
-                        <div className="text-right font-extrabold text-indigo-900 px-2">
-                          {(parseFloat(ec.tutar) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
-                        </div>
-                        <button type="button" onClick={() => handleRemoveExtraCharge(ec.id)} className="text-red-500 hover:bg-red-50 p-1 rounded flex justify-center"><Trash2 size={15} /></button>
-                      </div>
-                    ))}
-                  </div>
+                {items.length > 0 && (
+                  <>
+                    <span className="text-slate-300">|</span>
+                    <div className="flex items-center gap-1 text-[11px]">
+                      <button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="disabled:opacity-40 font-bold px-1.5 bg-white border rounded">&lt;</button>
+                      <span className="font-bold text-blue-700">{currentPage}/{totalPages}</span>
+                      <button type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="disabled:opacity-40 font-bold px-1.5 bg-white border rounded">&gt;</button>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
 
-            {selectedIds.length > 0 && (
-              <div className="bg-amber-50 border border-amber-300 p-2 rounded flex flex-wrap items-center justify-between gap-2 mb-2">
-                <span className="text-xs font-bold text-amber-900">{selectedIds.length} Satır Seçili - Palette Topla:</span>
-                <div className="flex items-center gap-2">
-                  <input type="text" placeholder="Palet No" className="px-2 py-1 border rounded text-xs w-24" value={groupPalletNo} onChange={e => setGroupPalletNo(e.target.value)} />
-                  <input type="text" placeholder="Ebat" className="px-2 py-1 border rounded text-xs w-28" value={groupPalletEbat} onChange={e => setGroupPalletEbat(e.target.value)} />
-                  <input type="text" placeholder="Brüt KG" className="px-2 py-1 border rounded text-xs w-24" value={groupBrutKg} onChange={e => setGroupBrutKg(e.target.value)} />
-                  <button type="button" onClick={handleApplyPalletGroup} className="bg-amber-600 text-white px-3 py-1 rounded text-xs font-bold">Birleştir</button>
-                  <button type="button" onClick={() => setSelectedIds([])} className="text-xs text-slate-500">Vazgeç</button>
-                </div>
+            {/* EK MALİYET SATIRLARI VARSA KOMPAKT LİSTE */}
+            {extraCharges.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {extraCharges.map((ec) => (
+                  <div key={ec.id} className="flex items-center gap-1.5 bg-indigo-50/80 border border-indigo-200 px-2.5 py-1 rounded-md text-xs">
+                    <input type="text" placeholder="Order No" value={ec.sipRefNo || ''} onChange={e => handleExtraChargeChange(ec.id, 'sipRefNo', e.target.value)} className="w-24 px-1.5 py-0.5 border rounded text-[11px] bg-white outline-none" />
+                    <input type="text" placeholder="Açıklama (Freight vb.)" value={ec.description || ''} onChange={e => handleExtraChargeChange(ec.id, 'description', e.target.value)} className="w-36 px-1.5 py-0.5 border rounded text-[11px] font-bold text-indigo-950 bg-white outline-none" />
+                    <input type="number" placeholder="Adet" value={ec.adet ?? 1} onChange={e => handleExtraChargeChange(ec.id, 'adet', e.target.value)} className="w-12 px-1 py-0.5 border rounded text-[11px] text-center font-bold bg-white outline-none" />
+                    <input type="text" placeholder="Birim Fiyat" value={ec.fiyat ?? ''} onChange={e => handleExtraChargeChange(ec.id, 'fiyat', e.target.value)} className="w-24 px-1.5 py-0.5 border rounded text-[11px] text-right font-semibold bg-white outline-none" />
+                    <span className="font-extrabold text-indigo-900 text-[11px] whitespace-nowrap">
+                      = {(parseFloat(ec.tutar) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
+                    </span>
+                    <button type="button" onClick={() => handleRemoveExtraCharge(ec.id)} className="text-red-500 hover:bg-red-100 p-0.5 rounded"><X size={13} /></button>
+                  </div>
+                ))}
               </div>
             )}
 
-            <div className="flex justify-between items-center gap-2">
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={handleAddRow} className="bg-white border text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center shadow-sm">
-                  <Plus size={16} className="mr-1" /> Satır Ekle
-                </button>
-                <button type="button" onClick={handleDownloadTemplate} className="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center shadow-sm">
-                  <Download size={16} className="mr-1" /> Şablon İndir
-                </button>
-                <div className="relative inline-block">
-                  <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} disabled={isExcelLoading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                  <button type="button" className={`px-3 py-1.5 text-white rounded-lg text-xs font-medium flex items-center shadow-sm ${isExcelLoading ? 'bg-indigo-400' : 'bg-indigo-600'}`}>
-                    {isExcelLoading ? <Loader2 className="mr-1" /> : <Upload size={16} className="mr-1" />}
-                    {isExcelLoading ? 'Yükleniyor...' : 'Excel Yükle'}
-                  </button>
+            {/* SEÇİLİ SATIRLARI PALETTE BİRLEŞTİRME BARI */}
+            {selectedIds.length > 0 && (
+              <div className="bg-amber-50 border border-amber-300 px-3 py-1.5 rounded-md flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-bold text-amber-900">{selectedIds.length} Satır Seçili — Tek Palette Birleştir:</span>
+                <div className="flex items-center gap-2">
+                  <input type="text" placeholder="Palet No (Örn: 1/6)" className="px-2 py-1 border rounded text-xs w-28 bg-white" value={groupPalletNo} onChange={e => setGroupPalletNo(e.target.value)} />
+                  <input type="text" placeholder="Ebat (Örn: 80x120x40)" className="px-2 py-1 border rounded text-xs w-32 bg-white" value={groupPalletEbat} onChange={e => setGroupPalletEbat(e.target.value)} />
+                  <input type="text" placeholder="Brüt KG" className="px-2 py-1 border rounded text-xs w-24 bg-white" value={groupBrutKg} onChange={e => setGroupBrutKg(e.target.value)} />
+                  <button type="button" onClick={handleApplyPalletGroup} className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded text-xs font-bold">Uygula</button>
+                  <button type="button" onClick={() => setSelectedIds([])} className="text-xs text-slate-500 hover:underline">Vazgeç</button>
                 </div>
               </div>
-
-              {items.length > 0 && (
-                <div className="flex items-center gap-2 text-xs bg-slate-200 px-3 py-1 rounded-lg">
-                  <span className="font-semibold text-slate-700">Toplam {items.length} Kalem</span>
-                  <span className="text-slate-400">|</span>
-                  <button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="disabled:opacity-40 font-bold px-1.5 py-0.5 bg-white rounded">
-                    &lt;
-                  </button>
-                  <span className="font-bold text-blue-700">Sayfa {currentPage} / {totalPages}</span>
-                  <button type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="disabled:opacity-40 font-bold px-1.5 py-0.5 bg-white rounded">
-                    &gt;
-                  </button>
-                  <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="bg-white border rounded px-1 py-0.5 ml-1">
-                    <option value={25}>25 Göster</option>
-                    <option value={50}>50 Göster</option>
-                    <option value={100}>100 Göster</option>
-                  </select>
-                </div>
-              )}
-
-              <button type="button" onClick={handleSave} className="px-6 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center shadow-md">
-                <Save size={16} className="mr-1.5" /> Kaydet
-              </button>
-            </div>
+            )}
           </div>
 
           <div className="flex-1 overflow-auto bg-slate-200 p-3">
@@ -2436,7 +2432,7 @@
                 <tfoot className="bg-slate-900 text-white font-bold text-xs sticky bottom-0 z-10 shadow-lg border-t-2 border-slate-700">
                   <tr>
                     <td colSpan={8} className="p-2.5 text-right uppercase tracking-wider font-extrabold text-slate-300 bg-slate-950">
-                      GENEL TOPLAM / TOTALS:
+                      MALZEME TOPLAMI / MATERIAL TOTALS:
                     </td>
                     <td className="p-2.5 text-right"></td>
                     <td className="p-2.5 text-right font-extrabold text-amber-400 text-sm">
@@ -2534,7 +2530,7 @@
                             type="button"
                             onClick={() => onPrint(item)}
                             className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 rounded text-xs font-bold flex items-center shadow-sm"
-                            title="Proforma Fatura Yazdır (A4)"
+                            title="Proforma Fatura Yazdır"
                           >
                             <Printer size={14} className="mr-1" /> Proforma Yazdır
                           </button>
@@ -2886,10 +2882,35 @@
       );
     }
 
-    // Kurumsal PROFORMA INVOICE A4 Görünümü (Aynı kalemleri tek satırda toplar + Uzun Order/Drawing No uyumlu)
-    function ProformaInvoicePage({ data, exporter, customer, deliveryTerm, showStamp, advanceRate, onRateChange }) {
+    // Seçilen Nakliyecinin İlk 3 Harfi ve Taşımacılık Türüne Göre Sembol Döndüren Yardımcı Bileşen
+    function CarrierBadge({ transporter, className = "text-[#0047b3] text-[10px] font-black italic inline-flex items-center gap-1" }) {
+      const code = useMemo(() => {
+        if (!transporter?.name) return 'TCT';
+        const clean = String(transporter.name).trim();
+        return clean.substring(0, 3).toLocaleUpperCase('tr-TR');
+      }, [transporter?.name]);
+
+      const iconName = useMemo(() => {
+        const t = String(transporter?.transportType || '').toLowerCase();
+        if (t.includes('deniz')) return 'ship';
+        if (t.includes('hava')) return 'plane';
+        if (t.includes('demir')) return 'train-front';
+        return 'truck';
+      }, [transporter?.transportType]);
+
+      return (
+        <span className={className} title={`${transporter?.name || ''} (${transporter?.transportType || 'Karayolu'})`}>
+          <span>{code}</span>
+          <Icon name={iconName} size={12} className="inline text-[#0047b3]" />
+        </span>
+      );
+    }
+
+    // Kurumsal PROFORMA INVOICE A4 Görünümü (Peşinat, Ek Maliyetler, Duty Fee, HS Code ve Nakliyeci Sembolü Tam Uyumlu)
+    function ProformaInvoicePage({ data, exporter, customer, transporter, deliveryTerm, showStamp, advanceRate, hasDownPayment }) {
       const rawItems = data?.items || [];
       const items = useMemo(() => groupItemsForInvoice(rawItems), [rawItems]);
+      const extraCharges = useMemo(() => (data?.extraCharges || []).filter(ec => ec && ec.description && String(ec.description).trim() !== ''), [data?.extraCharges]);
       const currency = data?.currency || 'EUR';
       const cleanDrawingNo = (str) => String(str || '').replace(/[-–—\s]+$/, '').trim();
 
@@ -2909,9 +2930,30 @@
         return { totalAdet, totalNetKg, totalTutar };
       }, [items]);
 
-      const rate = Number(advanceRate ?? data?.advanceRate ?? data?.downPaymentRate ?? 30);
-      const advanceAmount = (totals.totalTutar * rate) / 100;
-      const balanceAmount = Math.max(0, totals.totalTutar - advanceAmount);
+      const extraChargesTotal = useMemo(() => {
+        return extraCharges.reduce((sum, ec) => {
+          const a = parseFloat(String(ec.adet ?? 1).replace(',', '.')) || 0;
+          const f = parseFloat(String(ec.fiyat ?? 0).replace(',', '.')) || 0;
+          const t = parseFloat(String(ec.tutar ?? 0).replace(',', '.')) || (a * f) || 0;
+          return sum + t;
+        }, 0);
+      }, [extraCharges]);
+
+      const netOrderAmount = totals.totalTutar + extraChargesTotal;
+      const hasDuty = Boolean(data?.hasDutyFee);
+      const dutyRate = Number(data?.dutyFeeRate ?? 0);
+      const dutyAmount = hasDuty ? (totals.totalTutar * dutyRate) / 100 : 0;
+      const finalOrderAmount = netOrderAmount + dutyAmount;
+
+      const effectiveDutyLabel = data?.dutyFeeLabel && String(data.dutyFeeLabel).trim() !== ''
+        ? String(data.dutyFeeLabel).trim()
+        : `RECIP TR ${dutyRate.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} % DUTY`;
+
+      // Eğer hasDownPayment prop'u açıkça false gönderilmişse peşinatı gizle, aksi halde advanceRate kullan
+      const showAdvance = hasDownPayment !== undefined ? Boolean(hasDownPayment) : Number(advanceRate ?? data?.advanceRate ?? 30) > 0;
+      const rate = showAdvance ? Number(advanceRate ?? data?.advanceRate ?? data?.downPaymentRate ?? 30) : 0;
+      const advanceAmount = (finalOrderAmount * rate) / 100;
+      const balanceAmount = Math.max(0, finalOrderAmount - advanceAmount);
 
       const proformaDate = formatDateTR(data?.proformaDate || data?.checklistDate || new Date().toISOString().split('T')[0]);
       const formattedDeliveryDate = formatDateTR(data?.deliveryDate);
@@ -2919,12 +2961,18 @@
       const customDeliveryAddress = data?.deliveryAddress || '';
       const hasCustomDelivery = Boolean(customDeliveryAddress && customDeliveryAddress.trim() !== '');
 
+      const shipmentNo = data?.shipmentNo || '';
+      const bookingNo = data?.bookingNo || '';
+      const containerNo = data?.containerNo || '';
+      const hasContainerInfo = Boolean((shipmentNo && shipmentNo.trim()) || (bookingNo && bookingNo.trim()) || (containerNo && containerNo.trim()));
+
       const selectedBank = exporter?.banks?.find(b => b.id === data?.selectedBankId) || exporter?.banks?.filter(b => b.currency === currency)[0] || exporter?.banks?.[0];
 
-      const isFewRows = items.length <= 10;
-      const isMediumRows = items.length > 10 && items.length <= 18;
-      const isCompact = items.length > 18;
-      const isUltraCompact = items.length > 25;
+      const totalRows = items.length + extraCharges.length;
+      const isFewRows = totalRows <= 10;
+      const isMediumRows = totalRows > 10 && totalRows <= 18;
+      const isCompact = totalRows > 18;
+      const isUltraCompact = totalRows > 25;
 
       const invRowPad = isUltraCompact
         ? 'py-[2px] px-1.5 text-[8.5px]'
@@ -2934,7 +2982,7 @@
         ? 'py-1 px-2 text-[9.5px]'
         : 'py-1.5 px-2 text-[10px]';
 
-      const emptyZebraCount = isFewRows ? Math.max(0, 9 - items.length) : 0;
+      const emptyZebraCount = isFewRows ? Math.max(0, (hasContainerInfo ? 7 : 9) - totalRows) : 0;
 
       const defaultPaymentText = rate > 0
         ? `${rate}% ADVANCE PAYMENT PRIOR TO PRODUCTION, ${100 - rate}% BALANCE BEFORE SHIPMENT.`
@@ -2972,13 +3020,20 @@
                 <div>
                   <div className="font-black text-[13.5px] uppercase text-black leading-snug">{customer?.name}</div>
                   <div className="mt-0.5 text-black leading-snug">{customer?.address}</div>
-                  <div className="flex justify-between items-baseline mt-1">
+                  <div className="flex flex-wrap justify-between items-baseline gap-2 mt-1">
                     <span className="font-extrabold uppercase text-black">{customer?.country}</span>
-                    {customer?.vatNo && (
-                      <span className="font-extrabold text-black text-[10.5px] whitespace-nowrap">
-                        VAT ID: {customer.vatNo}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-3 ml-auto">
+                      {customer?.htsNo && (
+                        <span className="font-extrabold text-[#003d99] text-[10px] whitespace-nowrap">
+                          HS CODE: {customer.htsNo}
+                        </span>
+                      )}
+                      {customer?.vatNo && (
+                        <span className="font-extrabold text-black text-[10.5px] whitespace-nowrap">
+                          VAT ID: {customer.vatNo}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -3080,8 +3135,26 @@
                     </tr>
                   );
                 })}
+                {extraCharges.map((ec, ecIdx) => {
+                  const totalIdx = items.length + ecIdx;
+                  const zebraBg = totalIdx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
+                  const adet = parseFloat(String(ec.adet ?? 1).replace(',', '.')) || 1;
+                  const fiyat = parseFloat(String(ec.fiyat ?? 0).replace(',', '.')) || 0;
+                  const tutar = parseFloat(String(ec.tutar ?? 0).replace(',', '.')) || (adet * fiyat) || 0;
+                  return (
+                    <tr key={`pec-${ecIdx}`} className={`${zebraBg} border-b border-slate-300`}>
+                      <td className={`border-r border-slate-300 ${invRowPad} break-words font-medium`}>{ec.sipRefNo || ''}</td>
+                      <td className={`border-r border-slate-300 ${invRowPad} text-center`}></td>
+                      <td className={`border-r border-slate-300 ${invRowPad} font-bold leading-snug break-words`}>{ec.description}</td>
+                      <td className={`border-r border-slate-300 ${invRowPad}`}></td>
+                      <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap font-extrabold`}>{adet} PCS</td>
+                      <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap`}>{fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</td>
+                      <td className={`${invRowPad} text-right font-extrabold whitespace-nowrap`}>{tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</td>
+                    </tr>
+                  );
+                })}
                 {Array.from({ length: emptyZebraCount }).map((_, eIdx) => {
-                  const totalIdx = items.length + eIdx;
+                  const totalIdx = totalRows + eIdx;
                   const zebraBg = totalIdx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
                   return (
                     <tr key={`empty-${eIdx}`} className={`${zebraBg} border-b border-slate-300 h-[24px]`}>
@@ -3099,7 +3172,28 @@
             </table>
 
             {/* ESNEK A4 GÖVDE BOŞLUĞU */}
-            <div className="flex-1 bg-white min-h-[8px]"></div>
+            <div className="flex-1 bg-white min-h-[6px]"></div>
+
+            {hasContainerInfo && (
+              <div className="bg-white border-t border-slate-300 px-3 py-1.5 flex flex-wrap items-center gap-6 text-[10px] shrink-0">
+                {shipmentNo && (
+                  <div className="font-black text-[#a80000]">
+                    {shipmentNo.toLowerCase().startsWith('shipment') ? shipmentNo : `Shipment No. ${shipmentNo}`}
+                  </div>
+                )}
+                {bookingNo && (
+                  <div className="font-extrabold text-[#003d99]">
+                    {bookingNo.toLowerCase().startsWith('booking') ? bookingNo : `Booking ${bookingNo}`}
+                  </div>
+                )}
+                {containerNo && (
+                  <div className="font-extrabold text-[#0047b3] flex items-center gap-1">
+                    <Icon name="package" size={13} className="text-[#0047b3]" />
+                    <span>{containerNo}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ALT TOPLAM, AVANS VE BANKA BİLGİLERİ */}
             <table className="w-full text-left border-collapse border-t border-slate-300 shrink-0" style={{ tableLayout: 'fixed' }}>
@@ -3115,7 +3209,7 @@
                   <td className="p-2.5 bg-white align-bottom">
                     <div className="flex justify-between items-end font-extrabold text-[11px] text-black">
                       <span>Net Order Amount</span>
-                      <span>{totals.totalTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</span>
+                      <span>{netOrderAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</span>
                     </div>
                   </td>
                 </tr>
@@ -3124,7 +3218,10 @@
                   <td className="border-r border-slate-300 p-2.5 align-top bg-white">
                     <div className="grid grid-cols-[118px_1fr] gap-x-2 gap-y-0.5 text-[9px] uppercase items-center">
                       <div className="text-black font-extrabold">TOTAL QUANTITY :</div>
-                      <div className="text-black font-semibold">{totals.totalAdet.toLocaleString('tr-TR')} PCS</div>
+                      <div className="text-black font-semibold flex items-center justify-between pr-2">
+                        <span>{totals.totalAdet.toLocaleString('tr-TR')} PCS</span>
+                        {transporter && <CarrierBadge transporter={transporter} />}
+                      </div>
 
                       {totals.totalNetKg > 0 && (
                         <>
@@ -3134,12 +3231,19 @@
                       )}
 
                       <div className="text-black font-extrabold">DELIVERY TERM :</div>
-                      <div className="text-[#a80000] font-black">{customer?.country} {deliveryTerm || 'DAP'}</div>
+                      <div className="text-[#a80000] font-black">{deliveryTerm || 'DAP'} {customer?.country}</div>
 
                       <div className="text-black font-extrabold self-start">PAYMENT TERMS :</div>
                       <div className="text-[#0047b3] font-bold text-[8.5px] leading-tight">
                         {data?.paymentTerms || defaultPaymentText}
                       </div>
+
+                      {customer?.htsNo && (
+                        <>
+                          <div className="text-black font-extrabold">HS / HTS CODE :</div>
+                          <div className="text-[#003d99] font-black">{customer.htsNo}</div>
+                        </>
+                      )}
 
                       <div className="text-black font-extrabold pt-0.5">ORIGIN :</div>
                       <div className="text-black font-extrabold flex items-center gap-1.5 pt-0.5">
@@ -3164,15 +3268,23 @@
                   <td className="p-0 align-top bg-white h-full">
                     <div className="flex flex-col justify-between h-full font-bold text-[10.5px]" style={{ minHeight: '152px' }}>
                       <div>
-                        <div className="flex justify-between items-center px-2.5 py-1.5 text-[#003d99] bg-[#eef2f7] border-b border-slate-300 text-[11px]">
-                          <span className="font-extrabold">VAT</span>
-                          <span className="font-extrabold">0,00 .-{getSymbol(currency)}</span>
-                        </div>
+                        {hasDuty ? (
+                          <div className="flex justify-between items-center px-2.5 py-1.5 text-[#a80000] bg-[#eef2f7] border-b border-slate-300 text-[10.5px]">
+                            <span className="font-black">TAX</span>
+                            <span className="font-black text-[9.5px] uppercase px-1 text-center">{effectiveDutyLabel}</span>
+                            <span className="font-black whitespace-nowrap">{dutyAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</span>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center px-2.5 py-1.5 text-[#003d99] bg-[#eef2f7] border-b border-slate-300 text-[11px]">
+                            <span className="font-extrabold">VAT</span>
+                            <span className="font-extrabold">0,00 .-{getSymbol(currency)}</span>
+                          </div>
+                        )}
 
                         <div className="flex justify-between items-center px-2.5 py-2 border-b-4 border-double border-slate-400 text-[11px] bg-white">
                           <span className="font-extrabold text-black">Total Amount</span>
-                          <span className="text-[#a80000] text-[9.5px] font-black uppercase text-center px-1">{customer?.country} {deliveryTerm || 'DAP'}</span>
-                          <span className="font-black text-black">{totals.totalTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</span>
+                          <span className="text-[#a80000] text-[9.5px] font-black uppercase text-center px-1">{deliveryTerm || 'DAP'} {customer?.country}</span>
+                          <span className="font-black text-black whitespace-nowrap">{finalOrderAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</span>
                         </div>
 
                         {rate > 0 && (
@@ -3185,8 +3297,8 @@
                             </div>
 
                             <div className="flex justify-between items-center px-2.5 py-1.5 text-[#0047b3] font-extrabold text-[10px]">
-                              <span>BALANCE ({100 - rate}%)</span>
-                              <span className="whitespace-nowrap">
+                              <span className="underline">BALANCE ({100 - rate}%)</span>
+                              <span className="underline whitespace-nowrap">
                                 {balanceAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}
                               </span>
                             </div>
@@ -3197,7 +3309,7 @@
                       <div className="py-2 px-2 text-center bg-[#eef2f7] border-t border-b border-slate-300 my-auto">
                         <span className="text-[#003d99] italic text-[8.5px] font-semibold leading-tight block">
                           {rate > 0 ? `Advance Payment (${rate}%): ` : ''}
-                          {getAmountInWords(rate > 0 ? advanceAmount : totals.totalTutar, currency)}
+                          {getAmountInWords(rate > 0 ? advanceAmount : finalOrderAmount, currency)}
                         </span>
                       </div>
                     </div>
@@ -3278,6 +3390,7 @@
                 deliveryTerm={proforma?.deliveryTerm || 'DAP'}
                 showStamp={showStamp}
                 advanceRate={advanceRate}
+                hasDownPayment={Number(advanceRate) > 0}
               />
             </div>
           </div>
@@ -3380,7 +3493,6 @@
       const selectedBank = exporter?.banks?.find(b => b.id === checklist?.selectedBankId) || exporter?.banks?.filter(b => b.currency === currency)[0] || exporter?.banks?.[0];
       const selectedInsurance = exporter?.insurances?.find(i => i.id === checklist?.selectedInsuranceId) || exporter?.insurances?.[0];
 
-      // Kısa ve Uzun listeler için dinamik satır yüksekliği ve yazı boyutu
       const totalInvoiceRowCount = invoiceItems.length + extraCharges.length;
       const isFewRows = items.length <= 10;
       const isMediumRows = totalInvoiceRowCount > 10 && totalInvoiceRowCount <= 18;
@@ -3403,13 +3515,15 @@
         ? 'py-1 px-2 text-[9.5px]'
         : 'py-1.5 px-2.5 text-[10px]';
 
-      // Kısa fatura ve çeki listelerinde ekstra boş zebra satırları
       const emptyZebraCount = totalInvoiceRowCount <= 10 ? Math.max(0, (hasContainerInfo ? 7 : 9) - totalInvoiceRowCount) : 0;
       const emptyPackingZebraCount = isFewRows ? Math.max(0, (hasContainerInfo ? 6 : 8) - items.length) : 0;
 
       const effectiveDutyLabel = dutyFeeLabel && dutyFeeLabel.trim() !== ''
         ? dutyFeeLabel.trim()
         : `RECIP TR ${Number(dutyFeeRate || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} % DUTY`;
+
+      // TR e-Fatura (GİB) için TAX RECIP TR % DUTY satır açıklaması
+      const trDutyLineDesc = `TAX ${effectiveDutyLabel}`;
 
       const tabs = [
         { id: 'proforma', label: 'Proforma Invoice' },
@@ -3533,20 +3647,32 @@
             {/* Document Render Area */}
             <div className="flex-1 overflow-y-auto bg-slate-300 p-6 print-container">
               
-              {/* 0. PROFORMA INVOICE */}
+              {/* 0. PROFORMA INVOICE (Peşinat, Duty Fee, Ek Maliyetler ve Nakliyeci İkonu Tam Bağlı) */}
               {activeTab === 'proforma' && (
                 <ProformaInvoicePage
-                  data={{ ...checklist, deliveryAddress: customDeliveryAddress, deliveryDate, shipmentNo, bookingNo, containerNo }}
+                  data={{
+                    ...checklist,
+                    deliveryAddress: customDeliveryAddress,
+                    deliveryDate,
+                    shipmentNo,
+                    bookingNo,
+                    containerNo,
+                    hasDutyFee,
+                    dutyFeeRate,
+                    dutyFeeLabel
+                  }}
                   exporter={exporter}
                   customer={customer}
+                  transporter={transporter}
                   deliveryTerm={transporter?.deliveryTerm || 'DAP'}
                   showStamp={showStamp}
                   advanceRate={downPaymentRate}
+                  hasDownPayment={hasDownPayment}
                 />
               )}
 
               {/* ========================================================================= */}
-              {/* 1. INVOICE (Konteyner Bilgileri, Ek Maliyetler ve ABD Duty Fee Uyumlu) */}
+              {/* 1. INVOICE (HS Code, Dinamik Nakliyeci Sembolü, Konteyner ve Duty Fee) */}
               {/* ========================================================================= */}
               {activeTab === 'invoice' && (
                 <div className="bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
@@ -3581,13 +3707,20 @@
                          <div>
                            <div className="font-black text-[13.5px] uppercase text-black leading-snug">{customer?.name}</div>
                            <div className="mt-0.5 text-black leading-snug">{customer?.address}</div>
-                           <div className="flex justify-between items-baseline mt-1">
+                           <div className="flex flex-wrap justify-between items-baseline gap-2 mt-1">
                              <span className="font-extrabold uppercase text-black">{customer?.country}</span>
-                             {customer?.vatNo && (
-                               <span className="font-extrabold text-black text-[10.5px] whitespace-nowrap">
-                                 VAT ID: {customer.vatNo}
-                               </span>
-                             )}
+                             <div className="flex items-center gap-3 ml-auto">
+                               {customer?.htsNo && (
+                                 <span className="font-extrabold text-[#003d99] text-[10px] whitespace-nowrap">
+                                   HS CODE: {customer.htsNo}
+                                 </span>
+                               )}
+                               {customer?.vatNo && (
+                                 <span className="font-extrabold text-black text-[10.5px] whitespace-nowrap">
+                                   VAT ID: {customer.vatNo}
+                                 </span>
+                               )}
+                             </div>
                            </div>
                          </div>
 
@@ -3728,7 +3861,7 @@
 
                     <div className="flex-1 bg-white min-h-[6px]"></div>
 
-                    {/* SHIPMENT NO / BOOKING NO / CONTAINER NO BLOĞU (Örnek Görseldeki Gibi Sol Altta) */}
+                    {/* SHIPMENT NO / BOOKING NO / CONTAINER NO BLOĞU */}
                     {hasContainerInfo && (
                       <div className="bg-white border-t border-slate-300 px-3 py-1.5 flex flex-wrap items-center gap-6 text-[10px] shrink-0">
                         {shipmentNo && (
@@ -3782,10 +3915,16 @@
                                <div className="text-black font-extrabold">PACKED IN :</div>
                                <div className="text-black font-semibold flex items-center justify-between pr-2">
                                  <span>{totals?.paletCount} PALLETS</span>
-                                 <span className="text-[#0047b3] text-[10px] font-black italic inline-flex items-center gap-1">TCT <Truck size={11} className="inline text-[#0047b3]"/></span>
+                                 <CarrierBadge transporter={transporter} />
                                </div>
                                <div className="text-black font-extrabold self-start">PALLET DIMENSIONS :</div>
                                <div className="text-black text-[8.5px] leading-tight font-semibold normal-case">{palletSummary}</div>
+                               {customer?.htsNo && (
+                                 <>
+                                   <div className="text-black font-extrabold pt-0.5">HS / HTS CODE :</div>
+                                   <div className="text-[#003d99] font-black pt-0.5">{customer.htsNo}</div>
+                                 </>
+                               )}
                                <div className="text-black font-extrabold pt-0.5">ORIGIN :</div>
                                <div className="text-black font-extrabold flex items-center gap-1.5 pt-0.5">
                                  TÜRKİYE TR <span className="bg-[#a80000] text-white px-1 text-[7px] rounded-sm font-black">C*</span>
@@ -3809,7 +3948,6 @@
                           <td className="p-0 align-top bg-white h-full">
                             <div className="flex flex-col justify-between h-full font-bold text-[10.5px]" style={{ minHeight: '152px' }}>
                               <div>
-                                {/* ABD DUTY FEE AKTİFSE TAX / RECIP TR % DUTY GÖSTERİLİR, DEĞİLSE STANDART VAT 0,00 */}
                                 {hasDutyFee ? (
                                   <div className="flex justify-between items-center px-2.5 py-1.5 text-[#a80000] bg-[#eef2f7] border-b border-slate-300 text-[10.5px]">
                                     <span className="font-black">TAX</span>
@@ -3887,7 +4025,7 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 2. PACKING LIST / ÇEKİ LİSTESİ (Shipment, Booking & Container No Dahil) */}
+              {/* 2. PACKING LIST / ÇEKİ LİSTESİ (Nakliyeci İlk 3 Harf + Sembol Dahil) */}
               {/* ========================================================================= */}
               {activeTab === 'packing' && (
                 <div className="bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
@@ -3905,8 +4043,9 @@
                         <div className="flex flex-col border-l border-slate-200 pl-3.5">
                           <div className="font-black text-[13px] text-black uppercase leading-snug">{customer?.name}</div>
                           <div className="text-black mt-0.5 leading-snug">{customer?.address}</div>
-                          <div className="flex items-center gap-6 mt-1.5 font-extrabold text-black">
+                          <div className="flex flex-wrap items-center gap-5 mt-1.5 font-extrabold text-black">
                             <span className="uppercase">{customer?.country}</span>
+                            {customer?.htsNo && <span className="text-[#003d99]">HS CODE: {customer.htsNo}</span>}
                             {customer?.vatNo && <span>VAT ID: {customer.vatNo}</span>}
                           </div>
                         </div>
@@ -4019,7 +4158,7 @@
                     {/* ESNEK A4 GÖVDE BOŞLUĞU */}
                     <div className="flex-1 bg-white min-h-[6px]"></div>
 
-                    {/* SHIPMENT NO / BOOKING NO / CONTAINER NO BLOĞU (image_339afb.png Görselindeki Gibi) */}
+                    {/* SHIPMENT NO / BOOKING NO / CONTAINER NO BLOĞU */}
                     {hasContainerInfo && (
                       <div className="bg-white border-t border-slate-300 px-3 py-1.5 flex flex-wrap items-center gap-6 text-[10px] shrink-0">
                         {shipmentNo && (
@@ -4062,10 +4201,15 @@
                           <td className="border-r border-slate-300 py-2 px-0.5 font-black text-[#003d99]">{totals?.paletCount}</td>
                           <td className="border-r border-slate-300 py-2 px-1 font-black whitespace-nowrap">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
                           <td className="border-r border-slate-300 py-2 px-1 font-black whitespace-nowrap">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
-                          <td className="py-2 px-1 text-center align-middle bg-[#eef2f7]/60">
-                            <span className="text-[#0047b3] font-black text-[9px] leading-tight block">
-                              {transporter?.deliveryTerm ? `${transporter.deliveryTerm} ${customer?.country || ''}` : 'TCT'}
-                            </span>
+                          <td className="py-1.5 px-1 text-center align-middle bg-[#eef2f7]/60">
+                            <div className="flex flex-col items-center justify-center leading-tight">
+                              <CarrierBadge transporter={transporter} />
+                              {transporter?.deliveryTerm && (
+                                <span className="text-[#a80000] font-extrabold text-[8px] uppercase mt-0.5">
+                                  {transporter.deliveryTerm} {customer?.country || ''}
+                                </span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       </tbody>
@@ -4579,7 +4723,7 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 7. TR e-FATURA (GİB İHRACAT e-FATURA KOPYALAMA & AKTARIM EKRANI) */}
+              {/* 7. TR e-FATURA (GİB İHRACAT e-FATURA KOPYALAMA & AKTARIM EKRANI - DUTY SATIRI DAHİL) */}
               {/* ========================================================================= */}
               {activeTab === 'trInvoice' && (
                 <div className="bg-white p-6 mx-auto w-full shadow-lg rounded-xl border border-slate-300 max-w-[1000px] font-sans text-black">
@@ -4590,7 +4734,7 @@
                         TR İhracat e-Fatura Veri Kopyalama Tablosu (GİB Uyumlu)
                       </h2>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Format: <strong>Malın Gümrük Tanımı + [ADS İş No, Parça Adı, Sip. Ref No, Resim No]</strong>
+                        Format: <strong>Malın Gümrük Tanımı + [ADS İş No, Parça Adı, Sip. Ref No, Resim No]</strong> (Ek Maliyetler ve TAX/DUTY dahil)
                       </p>
                     </div>
 
@@ -4612,7 +4756,10 @@
                             const tutar = parseFloat(String(ec.tutar ?? 0).replace(',', '.')) || (adet * fiyat) || 0;
                             return `${invoiceItems.length + eIdx + 1}\t${ec.description}\t${adet}\t${fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\t${tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                           });
-                          copyText([...matLines, ...extraLines].join('\n'), 'all-table');
+                          const dutyLines = (hasDutyFee && dutyFeeAmount > 0) ? [
+                            `${invoiceItems.length + extraCharges.length + 1}\t${trDutyLineDesc}\t1\t${dutyFeeAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\t${dutyFeeAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          ] : [];
+                          copyText([...matLines, ...extraLines, ...dutyLines].join('\n'), 'all-table');
                         }}
                         className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-colors"
                       >
@@ -4638,7 +4785,10 @@
                               const fiyat = parseFloat(String(ec.fiyat ?? 0).replace(',', '.')) || 0;
                               const tutar = parseFloat(String(ec.tutar ?? 0).replace(',', '.')) || (adet * fiyat) || 0;
                               return [invoiceItems.length + eIdx + 1, ec.description, adet, Number(fiyat.toFixed(2)), Number(tutar.toFixed(2))];
-                            })
+                            }),
+                            ...(hasDutyFee && dutyFeeAmount > 0 ? [
+                              [invoiceItems.length + extraCharges.length + 1, trDutyLineDesc, 1, Number(dutyFeeAmount.toFixed(2)), Number(dutyFeeAmount.toFixed(2))]
+                            ] : [])
                           ];
                           const ws = window.XLSX.utils.aoa_to_sheet(rows);
                           ws['!cols'] = [{ wch: 8 }, { wch: 75 }, { wch: 14 }, { wch: 18 }, { wch: 18 }];
@@ -4784,9 +4934,24 @@
                                   </button>
                                 </div>
                               </td>
-                              <td className="py-2 px-2.5 text-right font-extrabold text-black border-r border-slate-300">{adet} ADET</td>
-                              <td className="py-2 px-2.5 text-right font-semibold text-black border-r border-slate-300 whitespace-nowrap">{fiyatFormatted} {getSymbol(currency)}</td>
-                              <td className="py-2 px-2.5 text-right font-extrabold text-[#a80000] border-r border-slate-300 whitespace-nowrap">{tutarFormatted} {getSymbol(currency)}</td>
+                              <td
+                                onClick={() => copyText(adet, `ec-qty-${eIdx}`)}
+                                className="py-2 px-2.5 text-right font-extrabold text-black border-r border-slate-300 cursor-pointer hover:bg-indigo-100"
+                              >
+                                {copiedKey === `ec-qty-${eIdx}` ? <span className="text-emerald-600">✓ {adet}</span> : `${adet} ADET`}
+                              </td>
+                              <td
+                                onClick={() => copyText(fiyatFormatted, `ec-price-${eIdx}`)}
+                                className="py-2 px-2.5 text-right font-semibold text-black border-r border-slate-300 cursor-pointer hover:bg-indigo-100 whitespace-nowrap"
+                              >
+                                {copiedKey === `ec-price-${eIdx}` ? <span className="text-emerald-600 font-bold">✓ {fiyatFormatted}</span> : `${fiyatFormatted} ${getSymbol(currency)}`}
+                              </td>
+                              <td
+                                onClick={() => copyText(tutarFormatted, `ec-tot-${eIdx}`)}
+                                className="py-2 px-2.5 text-right font-extrabold text-[#a80000] border-r border-slate-300 cursor-pointer hover:bg-indigo-100 whitespace-nowrap"
+                              >
+                                {copiedKey === `ec-tot-${eIdx}` ? <span className="text-emerald-600">✓ {tutarFormatted}</span> : `${tutarFormatted} ${getSymbol(currency)}`}
+                              </td>
                               <td className="py-2 px-2 text-center no-print">
                                 <button
                                   type="button"
@@ -4799,6 +4964,64 @@
                             </tr>
                           );
                         })}
+
+                        {/* 3. ABD / GÜMRÜK TAX DUTY SATIRI (GİB e-FATURA İÇİN OTOMATİK EKLENİR) */}
+                        {hasDutyFee && dutyFeeAmount > 0 && (() => {
+                          const dutyRowIdx = invoiceItems.length + extraCharges.length + 1;
+                          const dutyFormatted = dutyFeeAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          return (
+                            <tr className="bg-rose-50/60 hover:bg-rose-100/60 transition-colors">
+                              <td className="py-2 px-2 text-center font-bold text-rose-800 border-r border-slate-300">{dutyRowIdx}</td>
+                              <td className="py-2 px-3 font-black text-[#a80000] border-r border-slate-300">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="select-all">{trDutyLineDesc}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyText(trDutyLineDesc, 'duty-desc')}
+                                    className={`no-print shrink-0 px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                                      copiedKey === 'duty-desc'
+                                        ? 'bg-emerald-600 text-white border-emerald-600'
+                                        : 'bg-white hover:bg-slate-100 text-rose-700 border-rose-300'
+                                    }`}
+                                  >
+                                    {copiedKey === 'duty-desc' ? '✓ Kopyalandı' : 'Açıklamayı Kopyala'}
+                                  </button>
+                                </div>
+                              </td>
+                              <td
+                                onClick={() => copyText(1, 'duty-qty')}
+                                className="py-2 px-2.5 text-right font-extrabold text-black border-r border-slate-300 cursor-pointer hover:bg-rose-100"
+                              >
+                                {copiedKey === 'duty-qty' ? <span className="text-emerald-600">✓ 1</span> : '1 ADET'}
+                              </td>
+                              <td
+                                onClick={() => copyText(dutyFormatted, 'duty-price')}
+                                className="py-2 px-2.5 text-right font-semibold text-black border-r border-slate-300 cursor-pointer hover:bg-rose-100 whitespace-nowrap"
+                              >
+                                {copiedKey === 'duty-price' ? <span className="text-emerald-600 font-bold">✓ {dutyFormatted}</span> : `${dutyFormatted} ${getSymbol(currency)}`}
+                              </td>
+                              <td
+                                onClick={() => copyText(dutyFormatted, 'duty-tot')}
+                                className="py-2 px-2.5 text-right font-extrabold text-[#a80000] border-r border-slate-300 cursor-pointer hover:bg-rose-100 whitespace-nowrap"
+                              >
+                                {copiedKey === 'duty-tot' ? <span className="text-emerald-600">✓ {dutyFormatted}</span> : `${dutyFormatted} ${getSymbol(currency)}`}
+                              </td>
+                              <td className="py-2 px-2 text-center no-print">
+                                <button
+                                  type="button"
+                                  onClick={() => copyText(`${trDutyLineDesc}\t1\t${dutyFormatted}\t${dutyFormatted}`, 'duty-row')}
+                                  className={`px-2.5 py-1 rounded text-[10px] font-bold transition-colors ${
+                                    copiedKey === 'duty-row'
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-[#a80000] hover:bg-rose-800 text-white'
+                                  }`}
+                                >
+                                  {copiedKey === 'duty-row' ? '✓ Satır' : 'Satırı Kopyala'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })()}
                       </tbody>
                       <tfoot className="bg-slate-900 text-white font-extrabold text-xs">
                         <tr>
