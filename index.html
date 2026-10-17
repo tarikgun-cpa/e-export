@@ -920,6 +920,10 @@
                           }
                         }}
                         onDelete={async (id) => {
+                          if (checklists.some(ch => ch.customerId === id) || proformas.some(p => p.customerId === id)) {
+                            alert("Bu müşteriye ait kayıtlı Check List / Evrak veya Proforma Fatura bulunduğu için silinemez!");
+                            return;
+                          }
                           if (!window.confirm("Bu müşteriyi silmek istediğinizden emin misiniz?")) return;
                           if (isFirebaseConfigured && db) await getColRef('customers').doc(id).delete();
                           else setCustomers(customers.filter(c => c.id !== id));
@@ -941,6 +945,10 @@
                           }
                         }}
                         onDelete={async (id) => {
+                          if (checklists.some(ch => ch.transporterId === id)) {
+                            alert("Bu nakliyeciye ait kayıtlı Check List / Evrak bulunduğu için silinemez!");
+                            return;
+                          }
                           if (!window.confirm("Bu nakliyeciyi silmek istediğinizden emin misiniz?")) return;
                           if (isFirebaseConfigured && db) await getColRef('transporters').doc(id).delete();
                           else setTransporters(transporters.filter(t => t.id !== id));
@@ -2463,24 +2471,7 @@
 
               {/* Sağ: Tablo İçi Arama ve Sayfalama */}
               <div className="flex items-center gap-2">
-                <div className="relative w-48">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
-                    <Icon name="search" size={13} />
-                  </span>
-                  <input
-                    type="text"
-                    value={tableSearch}
-                    onChange={e => setTableSearch(e.target.value)}
-                    placeholder="Tabloda parça/palet ara..."
-                    className="w-full pl-7 pr-6 py-1.5 bg-white border border-slate-300 rounded-md text-xs outline-none focus:border-blue-600"
-                  />
-                  {tableSearch && (
-                    <button type="button" onClick={() => setTableSearch('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-
+                
                 {items.length > 0 && !tableSearch && (
                   <div className="flex items-center gap-1 text-xs bg-white px-2.5 py-1 rounded-md border border-slate-300">
                     <button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="disabled:opacity-40 font-bold px-1.5 hover:bg-slate-100 rounded">&lt;</button>
@@ -3160,7 +3151,24 @@
       );
     }
 
-    // Kurumsal PROFORMA INVOICE A4 Görünümü (Peşinat, Ek Maliyetler, Duty Fee, HS Code ve Nakliyeci Sembolü Tam Uyumlu)
+    // Duty Fee 2. Hücresine (dutyFeeLabel) Doğrudan Sayı/Tutar Girilmişse Algılayan Yardımcı Fonksiyon
+    const parseDirectDutyValue = (val) => {
+      if (val === null || val === undefined) return null;
+      const str = String(val).trim();
+      if (!str) return null;
+      // Eğer içinde harf veya % işareti varsa (Örn: "RECIP TR 15 % DUTY") bu bir metin etiketidir, direkt tutar değildir
+      if (/[a-zA-ZğüşıöçĞÜŞİÖÇ%]/.test(str)) return null;
+      let clean = str.replace(/\s/g, '');
+      if (clean.includes(',') && clean.includes('.')) {
+        clean = clean.replace(/\./g, '').replace(',', '.');
+      } else if (clean.includes(',')) {
+        clean = clean.replace(',', '.');
+      }
+      const num = parseFloat(clean);
+      return (!isNaN(num) && num >= 0) ? num : null;
+    };
+
+    // Kurumsal PROFORMA INVOICE A4 Görünümü
     function ProformaInvoicePage({ data, exporter, customer, transporter, deliveryTerm, showStamp, advanceRate, hasDownPayment }) {
       const rawItems = data?.items || [];
       const items = useMemo(() => groupItemsForInvoice(rawItems), [rawItems]);
@@ -3196,14 +3204,25 @@
       const netOrderAmount = totals.totalTutar + extraChargesTotal;
       const hasDuty = Boolean(data?.hasDutyFee);
       const dutyRate = Number(data?.dutyFeeRate ?? 0);
-      const dutyAmount = hasDuty ? (totals.totalTutar * dutyRate) / 100 : 0;
+      const directDuty = parseDirectDutyValue(data?.dutyFeeLabel);
+
+      // 2. hücreye direkt tutar yazılmışsa onu kullan, yazılmamışsa % orandan hesapla
+      const dutyAmount = hasDuty
+        ? (directDuty !== null ? directDuty : (totals.totalTutar * dutyRate) / 100)
+        : 0;
       const finalOrderAmount = netOrderAmount + dutyAmount;
 
-      const effectiveDutyLabel = data?.dutyFeeLabel && String(data.dutyFeeLabel).trim() !== ''
-        ? String(data.dutyFeeLabel).trim()
-        : `RECIP TR ${dutyRate.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} % DUTY`;
+      const effectiveDutyLabel = useMemo(() => {
+        if (directDuty !== null) {
+          return dutyRate > 0
+            ? `RECIP TR ${dutyRate.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} % DUTY`
+            : 'CUSTOMS DUTY';
+        }
+        return data?.dutyFeeLabel && String(data.dutyFeeLabel).trim() !== ''
+          ? String(data.dutyFeeLabel).trim()
+          : `RECIP TR ${dutyRate.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} % DUTY`;
+      }, [directDuty, dutyRate, data?.dutyFeeLabel]);
 
-      // Eğer hasDownPayment prop'u açıkça false gönderilmişse peşinatı gizle, aksi halde advanceRate kullan
       const showAdvance = hasDownPayment !== undefined ? Boolean(hasDownPayment) : Number(advanceRate ?? data?.advanceRate ?? 30) > 0;
       const rate = showAdvance ? Number(advanceRate ?? data?.advanceRate ?? data?.downPaymentRate ?? 30) : 0;
       const advanceAmount = (finalOrderAmount * rate) / 100;
@@ -3274,20 +3293,13 @@
                 <div>
                   <div className="font-black text-[13.5px] uppercase text-black leading-snug">{customer?.name}</div>
                   <div className="mt-0.5 text-black leading-snug">{customer?.address}</div>
-                  <div className="flex flex-wrap justify-between items-baseline gap-2 mt-1">
+                  <div className="flex justify-between items-baseline mt-1">
                     <span className="font-extrabold uppercase text-black">{customer?.country}</span>
-                    <div className="flex items-center gap-3 ml-auto">
-                      {customer?.htsNo && (
-                        <span className="font-extrabold text-[#003d99] text-[10px] whitespace-nowrap">
-                          HS CODE: {customer.htsNo}
-                        </span>
-                      )}
-                      {customer?.vatNo && (
-                        <span className="font-extrabold text-black text-[10.5px] whitespace-nowrap">
-                          VAT ID: {customer.vatNo}
-                        </span>
-                      )}
-                    </div>
+                    {customer?.vatNo && (
+                      <span className="font-extrabold text-black text-[10.5px] whitespace-nowrap">
+                        VAT ID: {customer.vatNo}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -3670,6 +3682,16 @@
       const [dutyFeeLabel, setDutyFeeLabel] = useState(checklist?.dutyFeeLabel || '');
       const [copiedKey, setCopiedKey] = useState(null);
 
+      // Sigorta Talimatı İçin Denizyolu & Karayolu Özel Alanları
+      const isSeaTransport = String(transporter?.transportType || '').toLowerCase().includes('deniz');
+      const [vesselName, setVesselName] = useState(checklist?.vesselName || '');
+      const [vesselFlag, setVesselFlag] = useState(checklist?.vesselFlag || '');
+      const [vesselImoYear, setVesselImoYear] = useState(checklist?.vesselImoYear || '');
+      const [vesselDestination, setVesselDestination] = useState(checklist?.vesselDestination || customer?.country || '');
+      const [portDepartureDate, setPortDepartureDate] = useState(checklist?.portDepartureDate || checklist?.checklistDate || '');
+      const [truckPlateNo, setTruckPlateNo] = useState(checklist?.truckPlateNo || '');
+      const [loadingDate, setLoadingDate] = useState(checklist?.loadingDate || checklist?.checklistDate || '');
+
       const copyText = (text, key) => {
         if (navigator.clipboard) {
           navigator.clipboard.writeText(String(text));
@@ -3700,11 +3722,14 @@
         return (totals?.totalTutar || 0) + extraChargesTotal;
       }, [totals?.totalTutar, extraChargesTotal]);
 
-      // Duty Fee SADECE Malzeme Toplam Tutarından (totals.totalTutar) hesaplanır!
+      // 2. kutuya (dutyFeeLabel) direkt tutar yazılmışsa yüzdeden hesaplama, direkt yazılan tutarı getir!
+      const directDutyAmount = useMemo(() => parseDirectDutyValue(dutyFeeLabel), [dutyFeeLabel]);
+
       const dutyFeeAmount = useMemo(() => {
         if (!hasDutyFee) return 0;
+        if (directDutyAmount !== null) return directDutyAmount;
         return ((totals?.totalTutar || 0) * (Number(dutyFeeRate) || 0)) / 100;
-      }, [hasDutyFee, dutyFeeRate, totals?.totalTutar]);
+      }, [hasDutyFee, directDutyAmount, dutyFeeRate, totals?.totalTutar]);
 
       // Genel Fatura Toplamı (Invoice Amount) = Net Amount + Duty Fee
       const finalInvoiceAmount = useMemo(() => {
@@ -3726,6 +3751,7 @@
       const formattedDeliveryDate = formatDateTR(deliveryDate);
       const hasCustomDelivery = Boolean(customDeliveryAddress && customDeliveryAddress.trim() !== '');
       const hasContainerInfo = Boolean((shipmentNo && shipmentNo.trim()) || (bookingNo && bookingNo.trim()) || (containerNo && containerNo.trim()));
+      const hasPackingBottomBar = Boolean(hasContainerInfo || (customer?.htsNo && String(customer.htsNo).trim() !== ''));
 
       const cleanDrawingNo = (str) => String(str || '').replace(/[-–—\s]+$/, '').trim();
 
@@ -3770,13 +3796,19 @@
         : 'py-1.5 px-2.5 text-[10px]';
 
       const emptyZebraCount = totalInvoiceRowCount <= 10 ? Math.max(0, (hasContainerInfo ? 7 : 9) - totalInvoiceRowCount) : 0;
-      const emptyPackingZebraCount = isFewRows ? Math.max(0, (hasContainerInfo ? 6 : 8) - items.length) : 0;
+      const emptyPackingZebraCount = isFewRows ? Math.max(0, (hasPackingBottomBar ? 6 : 8) - items.length) : 0;
 
-      const effectiveDutyLabel = dutyFeeLabel && dutyFeeLabel.trim() !== ''
-        ? dutyFeeLabel.trim()
-        : `RECIP TR ${Number(dutyFeeRate || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} % DUTY`;
+      const effectiveDutyLabel = useMemo(() => {
+        if (directDutyAmount !== null) {
+          return Number(dutyFeeRate) > 0
+            ? `RECIP TR ${Number(dutyFeeRate).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} % DUTY`
+            : 'CUSTOMS DUTY';
+        }
+        return dutyFeeLabel && dutyFeeLabel.trim() !== ''
+          ? dutyFeeLabel.trim()
+          : `RECIP TR ${Number(dutyFeeRate || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} % DUTY`;
+      }, [directDutyAmount, dutyFeeRate, dutyFeeLabel]);
 
-      // TR e-Fatura (GİB) için TAX RECIP TR % DUTY satır açıklaması
       const trDutyLineDesc = `TAX ${effectiveDutyLabel}`;
 
       const tabs = [
@@ -3835,24 +3867,35 @@
                         value={customDeliveryAddress} 
                         onChange={e => setCustomDeliveryAddress(e.target.value)} 
                         placeholder="Farklı sevk adresi..."
-                        className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px] font-semibold text-blue-800 outline-none w-36"
+                        className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px] font-semibold text-blue-800 outline-none w-32"
                       />
                     </div>
                     {(activeTab === 'invoice' || activeTab === 'proforma') && (
                       <>
                         <span className="text-slate-300">|</span>
-                        <label className="flex items-center gap-1 font-bold text-rose-700 cursor-pointer" title="Sadece Malzeme Toplam Tutarından Hesaplanır">
+                        <label className="flex items-center gap-1 font-bold text-rose-700 cursor-pointer" title="Oran veya 2. kutuya direkt tutar girebilirsiniz">
                           <input type="checkbox" checked={hasDutyFee} onChange={e => setHasDutyFee(e.target.checked)} className="w-3.5 h-3.5 accent-rose-600" />
                           Duty%
                         </label>
                         {hasDutyFee && (
-                          <input 
-                            type="number" 
-                            step="0.01"
-                            value={dutyFeeRate} 
-                            onChange={e => setDutyFeeRate(e.target.value)} 
-                            className="w-12 border border-rose-300 rounded px-1 py-0.5 text-center font-black text-rose-700 outline-none"
-                          />
+                          <div className="flex items-center gap-1">
+                            <input 
+                              type="number" 
+                              step="0.01"
+                              value={dutyFeeRate} 
+                              onChange={e => setDutyFeeRate(e.target.value)} 
+                              className="w-11 border border-rose-300 rounded px-1 py-0.5 text-center font-black text-rose-700 outline-none"
+                              title="Yüzde Oranı (%)"
+                            />
+                            <input 
+                              type="text" 
+                              value={dutyFeeLabel} 
+                              onChange={e => setDutyFeeLabel(e.target.value)} 
+                              placeholder="Etiket veya Tutar"
+                              className="w-28 border border-rose-300 rounded px-1.5 py-0.5 font-bold text-rose-900 outline-none"
+                              title="Buraya direkt rakam/tutar yazarsanız yüzdeden hesaplamaz, yazdığınız tutarı getirir"
+                            />
+                          </div>
                         )}
                         <span className="text-slate-300">|</span>
                         <label className="flex items-center gap-1 font-bold text-red-700 cursor-pointer">
@@ -3884,6 +3927,52 @@
                 </div>
               </div>
 
+              {/* SİGORTA TALİMATI SEKMESİ AÇIKKEN DENİZYOLU / KARAYOLU BİLGİ GİRİŞ BARI */}
+              {activeTab === 'insurance' && (
+                <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex flex-wrap items-center gap-3 text-xs">
+                  <span className="font-extrabold text-[#003d99] uppercase flex items-center gap-1">
+                    <CarrierBadge transporter={transporter} />
+                    <span>Sigorta Sevk Detayları ({isSeaTransport ? 'Denizyolu' : 'Karayolu'}):</span>
+                  </span>
+
+                  {isSeaTransport ? (
+                    <div className="flex flex-wrap items-center gap-2 flex-1">
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold text-slate-700">Gemi Adı:</span>
+                        <input type="text" value={vesselName} onChange={e => setVesselName(e.target.value)} placeholder="Örn: MSC ANNA" className="px-2 py-1 border border-blue-300 rounded bg-white text-xs font-bold w-32 outline-none" />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold text-slate-700">Bayrak:</span>
+                        <input type="text" value={vesselFlag} onChange={e => setVesselFlag(e.target.value)} placeholder="Örn: PANAMA" className="px-2 py-1 border border-blue-300 rounded bg-white text-xs font-bold w-24 outline-none" />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold text-slate-700">IMO / Yapım Yılı:</span>
+                        <input type="text" value={vesselImoYear} onChange={e => setVesselImoYear(e.target.value)} placeholder="Örn: 9485671 / 2012" className="px-2 py-1 border border-blue-300 rounded bg-white text-xs font-bold w-36 outline-none" />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold text-slate-700">Destinasyon:</span>
+                        <input type="text" value={vesselDestination} onChange={e => setVesselDestination(e.target.value)} placeholder="Liman / Ülke" className="px-2 py-1 border border-blue-300 rounded bg-white text-xs font-bold w-36 outline-none" />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold text-slate-700">Liman Kalkış Tarihi:</span>
+                        <input type="date" value={portDepartureDate} onChange={e => setPortDepartureDate(e.target.value)} className="px-2 py-1 border border-blue-300 rounded bg-white text-xs font-bold outline-none" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-700">Tır Plaka No:</span>
+                        <input type="text" value={truckPlateNo} onChange={e => setTruckPlateNo(e.target.value)} placeholder="Örn: 34 ABC 123 / 34 XYZ 45" className="px-2.5 py-1 border border-blue-300 rounded bg-white text-xs font-bold w-48 outline-none" />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-700">Yükleme Tarihi:</span>
+                        <input type="date" value={loadingDate} onChange={e => setLoadingDate(e.target.value)} className="px-2.5 py-1 border border-blue-300 rounded bg-white text-xs font-bold outline-none" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* TABS */}
               <div className="flex bg-slate-200 px-2 pt-2 gap-1 overflow-x-auto shadow-inner">
                 {tabs.map(tab => (
@@ -3901,7 +3990,7 @@
             {/* Document Render Area */}
             <div className="flex-1 overflow-y-auto bg-slate-300 p-6 print-container">
               
-              {/* 0. PROFORMA INVOICE (Peşinat, Duty Fee, Ek Maliyetler ve Nakliyeci İkonu Tam Bağlı) */}
+              {/* 0. PROFORMA INVOICE */}
               {activeTab === 'proforma' && (
                 <ProformaInvoicePage
                   data={{
@@ -3926,7 +4015,7 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 1. INVOICE (HS Code, Dinamik Nakliyeci Sembolü, Konteyner ve Duty Fee) */}
+              {/* 1. INVOICE (Müşteri Kutusundaki İkinci HS Code Kaldırıldı, Sol Alttaki Korundu) */}
               {/* ========================================================================= */}
               {activeTab === 'invoice' && (
                 <div className="bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
@@ -3961,20 +4050,13 @@
                          <div>
                            <div className="font-black text-[13.5px] uppercase text-black leading-snug">{customer?.name}</div>
                            <div className="mt-0.5 text-black leading-snug">{customer?.address}</div>
-                           <div className="flex flex-wrap justify-between items-baseline gap-2 mt-1">
+                           <div className="flex justify-between items-baseline mt-1">
                              <span className="font-extrabold uppercase text-black">{customer?.country}</span>
-                             <div className="flex items-center gap-3 ml-auto">
-                               {customer?.htsNo && (
-                                 <span className="font-extrabold text-[#003d99] text-[10px] whitespace-nowrap">
-                                   HS CODE: {customer.htsNo}
-                                 </span>
-                               )}
-                               {customer?.vatNo && (
-                                 <span className="font-extrabold text-black text-[10.5px] whitespace-nowrap">
-                                   VAT ID: {customer.vatNo}
-                                 </span>
-                               )}
-                             </div>
+                             {customer?.vatNo && (
+                               <span className="font-extrabold text-black text-[10.5px] whitespace-nowrap">
+                                 VAT ID: {customer.vatNo}
+                               </span>
+                             )}
                            </div>
                          </div>
 
@@ -4279,7 +4361,7 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 2. PACKING LIST / ÇEKİ LİSTESİ (Nakliyeci İlk 3 Harf + Sembol Dahil) */}
+              {/* 2. PACKING LIST / ÇEKİ LİSTESİ (HS Code Aşağıda Container No'dan Sonra) */}
               {/* ========================================================================= */}
               {activeTab === 'packing' && (
                 <div className="bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
@@ -4290,16 +4372,15 @@
                       {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-h-[78px] max-w-[240px] object-contain" />}
                     </div>
 
-                    {/* CUSTOMER INFO CARD */}
+                    {/* CUSTOMER INFO CARD (HS Code Buradan Kaldırıldı, Sadece Ülke ve VAT ID Var) */}
                     <div className="border border-slate-300 rounded-xl bg-white mb-2.5 text-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.03)] overflow-hidden">
                       <div className="grid grid-cols-[110px_1fr_180px] gap-3 p-3 items-center">
                         <div className="font-extrabold text-[#0047b3] self-start pt-0.5 tracking-wider uppercase text-[10px]">CUSTOMER</div>
                         <div className="flex flex-col border-l border-slate-200 pl-3.5">
                           <div className="font-black text-[13px] text-black uppercase leading-snug">{customer?.name}</div>
                           <div className="text-black mt-0.5 leading-snug">{customer?.address}</div>
-                          <div className="flex flex-wrap items-center gap-5 mt-1.5 font-extrabold text-black">
+                          <div className="flex flex-wrap items-center gap-6 mt-1.5 font-extrabold text-black">
                             <span className="uppercase">{customer?.country}</span>
-                            {customer?.htsNo && <span className="text-[#003d99]">HS CODE: {customer.htsNo}</span>}
                             {customer?.vatNo && <span>VAT ID: {customer.vatNo}</span>}
                           </div>
                         </div>
@@ -4412,8 +4493,8 @@
                     {/* ESNEK A4 GÖVDE BOŞLUĞU */}
                     <div className="flex-1 bg-white min-h-[6px]"></div>
 
-                    {/* SHIPMENT NO / BOOKING NO / CONTAINER NO BLOĞU */}
-                    {hasContainerInfo && (
+                    {/* SHIPMENT NO / BOOKING NO / CONTAINER NO VE HEMEN ARDINDAN HS CODE BLOĞU */}
+                    {hasPackingBottomBar && (
                       <div className="bg-white border-t border-slate-300 px-3 py-1.5 flex flex-wrap items-center gap-6 text-[10px] shrink-0">
                         {shipmentNo && (
                           <div className="font-black text-[#a80000]">
@@ -4429,6 +4510,11 @@
                           <div className="font-extrabold text-[#0047b3] flex items-center gap-1">
                             <Icon name="package" size={13} className="text-[#0047b3]" />
                             <span>{containerNo}</span>
+                          </div>
+                        )}
+                        {customer?.htsNo && (
+                          <div className="font-extrabold text-[#003d99]">
+                            HS / HTS CODE: <span className="text-black font-black">{customer.htsNo}</span>
                           </div>
                         )}
                       </div>
@@ -4723,12 +4809,12 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 5. SİGORTA TALİMATI */}
+              {/* 5. SİGORTA TALİMATI (Denizyolu Gemi/IMO/Liman ve Karayolu Plaka/Tarih Uyumlu) */}
               {/* ========================================================================= */}
               {activeTab === 'insurance' && (
                 <div className="bg-white p-7 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page flex flex-col justify-between border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
                   <div>
-                    <div className="flex justify-between items-center border-b border-slate-300 pb-4 mb-5">
+                    <div className="flex justify-between items-center border-b border-slate-300 pb-3.5 mb-4">
                       {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-w-[220px] object-contain" />}
                       <div className="text-right">
                         <p className="font-black text-base text-black">{exporter?.name}</p>
@@ -4739,7 +4825,7 @@
                       </div>
                     </div>
 
-                    <div className="mb-4 border border-slate-300 rounded-xl p-3.5 bg-[#eef2f7]/60">
+                    <div className="mb-3.5 border border-slate-300 rounded-xl p-3 bg-[#eef2f7]/60">
                       <div className="text-[10px] font-extrabold text-[#0047b3] uppercase tracking-wider mb-0.5">SİGORTA ACENTESİ</div>
                       <h2 className="text-base font-black text-black">{selectedInsurance?.agencyName || 'Sigorta Acentesi Adı'}</h2>
                       {selectedInsurance?.address && <p className="text-xs text-slate-800 mt-0.5">{selectedInsurance.address}</p>}
@@ -4750,65 +4836,94 @@
                       </p>
                     </div>
 
-                    <p className="mb-1.5 text-xs"><strong>İlgi:</strong> Nakliye Sigortası</p>
-                    <p className="mb-4 text-xs leading-relaxed text-slate-800">
+                    <p className="mb-1 text-xs"><strong>İlgi:</strong> Nakliye Sigortası ({transporter?.transportType || 'Karayolu'})</p>
+                    <p className="mb-3.5 text-xs leading-relaxed text-slate-800">
                       <strong>{transporter?.name}</strong> şirketi ile <strong>{customer?.country}</strong> adresine sevk edeceğimiz aşağıda detayları verilen malımızın nakliye sigortasının yapılmasını, sigorta poliçesinin ve orijinal suretlerinin tarafımıza verilmesini rica ederiz.
                     </p>
 
-                    <div className="border border-slate-300 rounded-xl overflow-hidden mb-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-                      <div className="bg-[#a80000] text-white px-4 py-1.5 font-extrabold text-xs uppercase tracking-wider">
-                        SİGORTALANACAK YÜK VE SEVKİYAT BİLGİLERİ
+                    <div className="border border-slate-300 rounded-xl overflow-hidden mb-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                      <div className="bg-[#a80000] text-white px-4 py-1.5 font-extrabold text-xs uppercase tracking-wider flex justify-between items-center">
+                        <span>SİGORTALANACAK YÜK VE SEVKİYAT BİLGİLERİ</span>
+                        <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded">{isSeaTransport ? 'DENİZYOLU SEVKİYATI' : 'KARAYOLU SEVKİYATI'}</span>
                       </div>
-                      <div className="p-4 bg-white grid grid-cols-[175px_12px_1fr] gap-y-3.5 text-xs items-center divide-y divide-slate-100">
+                      <div className="p-3.5 bg-white grid grid-cols-[175px_12px_1fr] gap-y-2.5 text-xs items-center divide-y divide-slate-100">
                         <div className="font-extrabold text-[#0047b3] self-start pt-1">MALIN CİNSİ</div><div className="font-bold self-start pt-1">:</div>
                         <div className="font-extrabold text-black pt-1">
                           ÇELİK DÖKÜMDEN MAMÜL AŞINIR PARÇALAR <br/>
                           <span className="font-semibold text-slate-700">{uniquePartNames}</span>
                         </div>
 
-                        <div className="font-extrabold text-[#0047b3] pt-2.5">MALIN MİKTARI</div><div className="font-bold pt-2.5">:</div>
-                        <div className="font-bold pt-2.5">
+                        <div className="font-extrabold text-[#0047b3] pt-2">MALIN MİKTARI</div><div className="font-bold pt-2">:</div>
+                        <div className="font-bold pt-2">
                           {totals?.paletCount} Palet / {totals?.totalAdet?.toLocaleString('tr-TR')} Adet (Net: {totals?.totalNetKg?.toLocaleString('tr-TR')} KGS — Brüt: {totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS)
                         </div>
 
-                        <div className="font-extrabold text-[#a80000] pt-2.5">SİGORTALANACAK BEDEL</div><div className="font-bold pt-2.5">:</div>
-                        <div className="font-black text-sm text-[#a80000] pt-2.5">
+                        <div className="font-extrabold text-[#a80000] pt-2">SİGORTALANACAK BEDEL</div><div className="font-bold pt-2">:</div>
+                        <div className="font-black text-sm text-[#a80000] pt-2">
                           {finalInvoiceAmount.toLocaleString('tr-TR', {minimumFractionDigits:2})} {currency}
                         </div>
 
-                        <div className="font-extrabold text-[#0047b3] self-start pt-2.5">SİGORTALI FİRMA</div><div className="font-bold self-start pt-2.5">:</div>
-                        <div className="font-bold text-black pt-2.5">
+                        <div className="font-extrabold text-[#0047b3] self-start pt-2">SİGORTALI FİRMA</div><div className="font-bold self-start pt-2">:</div>
+                        <div className="font-bold text-black pt-2">
                           {exporter?.name} <br/>
                           <span className="font-medium text-slate-700">{exporter?.address}</span>
                         </div>
 
-                        <div className="font-extrabold text-[#0047b3] self-start pt-2.5">ALICI FİRMA</div><div className="font-bold self-start pt-2.5">:</div>
-                        <div className="font-bold text-black pt-2.5">
+                        <div className="font-extrabold text-[#0047b3] self-start pt-2">ALICI FİRMA</div><div className="font-bold self-start pt-2">:</div>
+                        <div className="font-bold text-black pt-2">
                           {customer?.name} <br/>
                           <span className="font-medium text-slate-700">{customer?.address} — {customer?.country}</span>
                         </div>
 
-                        <div className="font-extrabold text-[#0047b3] self-start pt-2.5">SEVK ADRESİ</div><div className="font-bold self-start pt-2.5">:</div>
-                        <div className="font-bold text-[#0047b3] whitespace-pre-line pt-2.5">
+                        <div className="font-extrabold text-[#0047b3] self-start pt-2">SEVK ADRESİ</div><div className="font-bold self-start pt-2">:</div>
+                        <div className="font-bold text-[#0047b3] whitespace-pre-line pt-2">
                           {hasCustomDelivery ? customDeliveryAddress : `${customer?.name} — ${customer?.address} ${customer?.country}`}
                         </div>
                         
-                        <div className="font-extrabold text-[#0047b3] pt-2.5">SATIŞ ŞEKLİ</div><div className="font-bold pt-2.5">:</div>
-                        <div className="font-extrabold text-[#a80000] pt-2.5">{transporter?.deliveryTerm} {customer?.country}</div>
+                        <div className="font-extrabold text-[#0047b3] pt-2">SATIŞ ŞEKLİ</div><div className="font-bold pt-2">:</div>
+                        <div className="font-extrabold text-[#a80000] pt-2">{transporter?.deliveryTerm} {customer?.country}</div>
+
+                        {/* TAŞIMA TÜRÜNE GÖRE DENİZYOLU VEYA KARAYOLU DETAY SATIRLARI */}
+                        {isSeaTransport ? (
+                          <>
+                            <div className="font-extrabold text-[#003d99] pt-2">GEMİ ADI</div><div className="font-bold pt-2">:</div>
+                            <div className="font-black text-black uppercase pt-2">{vesselName || '-'}</div>
+
+                            <div className="font-extrabold text-[#003d99] pt-2">BAYRAK</div><div className="font-bold pt-2">:</div>
+                            <div className="font-bold text-black uppercase pt-2">{vesselFlag || '-'}</div>
+
+                            <div className="font-extrabold text-[#003d99] pt-2">IMO / YAPIM YILI</div><div className="font-bold pt-2">:</div>
+                            <div className="font-bold text-black pt-2">{vesselImoYear || '-'}</div>
+
+                            <div className="font-extrabold text-[#003d99] pt-2">DESTİNASYON</div><div className="font-bold pt-2">:</div>
+                            <div className="font-bold text-black uppercase pt-2">{vesselDestination || customer?.country || '-'}</div>
+
+                            <div className="font-extrabold text-[#003d99] pt-2">LİMAN KALKIŞ TARİHİ</div><div className="font-bold pt-2">:</div>
+                            <div className="font-extrabold text-black pt-2">{formatDateTR(portDepartureDate) || '-'}</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="font-extrabold text-[#003d99] pt-2">TIR PLAKA NO</div><div className="font-bold pt-2">:</div>
+                            <div className="font-black text-black uppercase pt-2">{truckPlateNo || '-'}</div>
+
+                            <div className="font-extrabold text-[#003d99] pt-2">YÜKLEME TARİHİ</div><div className="font-bold pt-2">:</div>
+                            <div className="font-extrabold text-black pt-2">{formatDateTR(loadingDate) || '-'}</div>
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    <div className="bg-rose-50/70 text-[#a80000] p-3.5 border border-rose-300 rounded-xl text-xs font-extrabold">
+                    <div className="bg-rose-50/70 text-[#a80000] p-3 border border-rose-300 rounded-xl text-xs font-extrabold">
                       NOT: Mallar %110 (All Risks) olarak sigortalanacak ve ekteki örneğe uygun olarak İngilizce Poliçe düzenlenecektir. POLİÇENİN ACİLEN TARAFIMIZA GÖNDERİLMESİNİ RİCA EDERİZ.
                     </div>
                   </div>
                   
-                  <div className="mt-auto pt-3 flex justify-end pr-6 pb-2">
+                  <div className="mt-auto pt-2 flex justify-end pr-6 pb-1">
                     <div className="font-bold text-sm text-center flex flex-col items-center">
                       <p className="text-xs text-slate-700 uppercase">Saygılarımızla,</p>
                       <p className="mt-0.5 font-black text-black">{exporter?.name}</p>
-                      <div className="mt-1 flex justify-center items-center min-h-[100px] min-w-[210px]">
-                        <StampImage maxW="200px" maxH="95px" />
+                      <div className="mt-1 flex justify-center items-center min-h-[90px] min-w-[210px]">
+                        <StampImage maxW="200px" maxH="90px" />
                       </div>
                     </div>
                   </div>
@@ -5219,7 +5334,7 @@
                           );
                         })}
 
-                        {/* 3. ABD / GÜMRÜK TAX DUTY SATIRI (GİB e-FATURA İÇİN OTOMATİK EKLENİR) */}
+                        {/* 3. ABD / GÜMRÜK TAX DUTY SATIRI */}
                         {hasDutyFee && dutyFeeAmount > 0 && (() => {
                           const dutyRowIdx = invoiceItems.length + extraCharges.length + 1;
                           const dutyFormatted = dutyFeeAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
