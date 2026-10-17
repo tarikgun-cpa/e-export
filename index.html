@@ -338,6 +338,56 @@
       return renderInfo.filter(Boolean);
     };
 
+    // Proforma, Invoice, A.TR ve TR e-Fatura için aynı ürünleri tek satırda toplar
+    const groupItemsForInvoice = (items) => {
+      if (!Array.isArray(items) || items.length === 0) return [];
+      const parseNum = (val) => {
+        if (typeof val === 'number') return isNaN(val) ? 0 : val;
+        if (!val) return 0;
+        let s = String(val).replace(/\s/g, '');
+        if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
+        else if (s.includes(',')) s = s.replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+      };
+      const cleanDwg = (str) => String(str || '').replace(/[-–—\s]+$/, '').trim().toUpperCase();
+      const norm = (str) => String(str || '').trim().toUpperCase();
+
+      const groupedMap = new Map();
+      items.forEach((item) => {
+        if (!item) return;
+        const fiyatNum = parseNum(item.fiyat);
+        const adetNum = parseNum(item.adet);
+        const tutarNum = parseNum(item.tutar) || (adetNum * fiyatNum);
+        const netKgNum = parseNum(item.netKg);
+
+        const key = [
+          norm(item.adsIsNo),
+          norm(item.sipRefNo),
+          norm(item.posNo),
+          norm(item.parcaAdi),
+          cleanDwg(item.resimNo),
+          fiyatNum.toFixed(4)
+        ].join('||');
+
+        if (groupedMap.has(key)) {
+          const existing = groupedMap.get(key);
+          existing.adet = Number((existing.adet + adetNum).toFixed(4));
+          existing.tutar = Number((existing.tutar + tutarNum).toFixed(2));
+          existing.netKg = Number((existing.netKg + netKgNum).toFixed(2));
+        } else {
+          groupedMap.set(key, {
+            ...item,
+            adet: adetNum,
+            fiyat: fiyatNum,
+            tutar: Number(tutarNum.toFixed(2)),
+            netKg: netKgNum
+          });
+        }
+      });
+      return Array.from(groupedMap.values());
+    };
+
     const calculateTotals = (items, processedRows) => {
       let totalAdet = 0;
       let totalNetKg = 0;
@@ -1612,6 +1662,12 @@
                     <td className="p-4 font-bold text-blue-600">
                       {item.invoiceNumber}
                       <div className="text-xs text-slate-400 font-normal">{formatDateTR(item.checklistDate) || new Date(item.createdAt).toLocaleDateString('tr-TR')}</div>
+                      {(item.shipmentNo || item.containerNo) && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {item.shipmentNo && <span className="bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded text-[10px] font-extrabold">{item.shipmentNo}</span>}
+                          {item.containerNo && <span className="bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded text-[10px] font-extrabold">📦 {item.containerNo}</span>}
+                        </div>
+                      )}
                     </td>
                     <td className="p-4 text-slate-700">{getCustomerName(item.customerId)}</td>
                     <td className="p-4 text-slate-700">
@@ -1649,10 +1705,41 @@
       const [selectedInsuranceId, setSelectedInsuranceId] = useState(initialData?.selectedInsuranceId || '');
       const [customsDescriptionTR, setCustomsDescriptionTR] = useState(initialData?.customsDescriptionTR || 'Yatak');
       const [specialNote, setSpecialNote] = useState(initialData?.specialNote || '');
+      const [shipmentNo, setShipmentNo] = useState(initialData?.shipmentNo || '');
+      const [bookingNo, setBookingNo] = useState(initialData?.bookingNo || '');
+      const [containerNo, setContainerNo] = useState(initialData?.containerNo || '');
+      const [hasDutyFee, setHasDutyFee] = useState(initialData?.hasDutyFee || false);
+      const [dutyFeeRate, setDutyFeeRate] = useState(initialData?.dutyFeeRate ?? 12.5);
+      const [dutyFeeLabel, setDutyFeeLabel] = useState(initialData?.dutyFeeLabel || '');
+      const [extraCharges, setExtraCharges] = useState(initialData?.extraCharges || []);
       const [hasDownPayment, setHasDownPayment] = useState(initialData?.hasDownPayment || false);
       const [downPaymentRate, setDownPaymentRate] = useState(initialData?.downPaymentRate ?? 30);
       const [isFreeOfCharge, setIsFreeOfCharge] = useState(initialData?.isFreeOfCharge || false);
       const [items, setItems] = useState(initialData?.items || []);
+
+      const handleAddExtraCharge = (presetName = '') => {
+        setExtraCharges(prev => [
+          ...prev,
+          { id: generateId(), sipRefNo: '', description: presetName, adet: 1, fiyat: '', tutar: '' }
+        ]);
+      };
+
+      const handleExtraChargeChange = (id, key, val) => {
+        setExtraCharges(prev => prev.map(ec => {
+          if (ec.id !== id) return ec;
+          const updated = { ...ec, [key]: val };
+          if (key === 'adet' || key === 'fiyat') {
+            const a = parseFloat(String(updated.adet).replace(',', '.')) || 0;
+            const f = parseFloat(String(updated.fiyat).replace(',', '.')) || 0;
+            updated.tutar = (a * f).toFixed(2);
+          }
+          return updated;
+        }));
+      };
+
+      const handleRemoveExtraCharge = (id) => {
+        setExtraCharges(prev => prev.filter(ec => ec.id !== id));
+      };
       const [isExcelLoading, setIsExcelLoading] = useState(false);
 
       const [currentPage, setCurrentPage] = useState(1);
@@ -2052,6 +2139,13 @@
           selectedInsuranceId,
           customsDescriptionTR: customsDescriptionTR.trim(),
           specialNote: specialNote.trim(),
+          shipmentNo: shipmentNo.trim(),
+          bookingNo: bookingNo.trim(),
+          containerNo: containerNo.trim(),
+          hasDutyFee,
+          dutyFeeRate: Number(dutyFeeRate) || 0,
+          dutyFeeLabel: dutyFeeLabel.trim(),
+          extraCharges: extraCharges.filter(ec => ec.description && String(ec.description).trim() !== ''),
           hasDownPayment,
           downPaymentRate: Number(downPaymentRate) || 0,
           isFreeOfCharge,
@@ -2074,67 +2168,98 @@
             <div className="text-slate-400 text-sm">İhracatçı: <span className="text-white font-medium">{exporter.name}</span></div>
           </div>
 
-          <div className="p-4 border-b border-gray-200 bg-slate-50 shrink-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+          <div className="p-4 border-b border-gray-200 bg-slate-50 shrink-0 max-h-[46vh] overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-2.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">FATURA NO *</label>
-                <input type="text" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="INV-2026-001" />
+                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">FATURA NO *</label>
+                <input type="text" className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs font-bold" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="INV-2026-001" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">TARİH</label>
-                <input type="date" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={checklistDate} onChange={e => setChecklistDate(e.target.value)} />
+                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">TARİH</label>
+                <input type="date" className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={checklistDate} onChange={e => setChecklistDate(e.target.value)} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">DÖVİZ</label>
-                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white font-bold" value={currency} onChange={e => setCurrency(e.target.value)}>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">DÖVİZ</label>
+                <select className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white font-bold" value={currency} onChange={e => setCurrency(e.target.value)}>
                   <option value="EUR">EUR (€)</option><option value="USD">USD ($)</option><option value="TRY">TRY (₺)</option><option value="GBP">GBP (£)</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">MÜŞTERİ *</label>
-                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={customerId} onChange={e => setCustomerId(e.target.value)}>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">MÜŞTERİ *</label>
+                <select className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={customerId} onChange={e => setCustomerId(e.target.value)}>
                   <option value="">-- Seçin --</option>
                   {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">NAKLİYECİ</label>
-                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={transporterId} onChange={e => setTransporterId(e.target.value)}>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">NAKLİYECİ</label>
+                <select className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={transporterId} onChange={e => setTransporterId(e.target.value)}>
                   <option value="">-- Seçin --</option>
                   {transporters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">BANKA HESABI</label>
-                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={selectedBankId} onChange={e => setSelectedBankId(e.target.value)}>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">BANKA HESABI</label>
+                <select className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={selectedBankId} onChange={e => setSelectedBankId(e.target.value)}>
                   <option value="">-- Otomatik Seç --</option>
                   {exporter?.banks?.map(b => <option key={b.id} value={b.id}>{b.bankName} ({b.currency})</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">SİGORTA ACENTESİ</label>
-                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={selectedInsuranceId} onChange={e => setSelectedInsuranceId(e.target.value)}>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">SİGORTA ACENTESİ</label>
+                <select className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={selectedInsuranceId} onChange={e => setSelectedInsuranceId(e.target.value)}>
                   <option value="">-- Acente Seçin --</option>
                   {exporter?.insurances?.map(i => <option key={i.id} value={i.id}>{i.agencyName}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">TESLİM TARİHİ (DELIVERY DATE)</label>
-                <input type="date" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
+                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">TESLİM TARİHİ (DELIVERY DATE)</label>
+                <input type="date" className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs bg-white" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
+              </div>
+
+              {/* KONTEYNER VE SEVKİYAT TAKİP ALANLARI */}
+              <div>
+                <label className="block text-[11px] font-bold text-red-700 mb-0.5">SHIPMENT NO</label>
+                <input type="text" className="w-full px-2.5 py-1 border border-red-200 rounded-lg outline-none text-xs font-bold text-red-800 bg-red-50/30 focus:bg-white" value={shipmentNo} onChange={e => setShipmentNo(e.target.value)} placeholder="Örn: Shipment No. 23" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">SEVK ADRESİ</label>
-                <input type="text" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Adres..." />
+                <label className="block text-[11px] font-bold text-blue-800 mb-0.5">BOOKING NO</label>
+                <input type="text" className="w-full px-2.5 py-1 border border-blue-200 rounded-lg outline-none text-xs font-bold text-blue-900 bg-blue-50/30 focus:bg-white" value={bookingNo} onChange={e => setBookingNo(e.target.value)} placeholder="Örn: Booking ELK20262456" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-indigo-700 mb-1">MALIN TÜRKÇE GÜMRÜK TANIMI (TR e-FATURA)</label>
-                <input type="text" className="w-full px-3 py-1.5 border border-indigo-300 rounded-lg outline-none text-sm font-semibold text-indigo-900 bg-indigo-50/40 focus:bg-white" value={customsDescriptionTR} onChange={e => setCustomsDescriptionTR(e.target.value)} placeholder="Örn: Çelik Dökümden Mamül Aşınır Parça" />
+                <label className="block text-[11px] font-bold text-sky-800 mb-0.5">📦 CONTAINER NO</label>
+                <input type="text" className="w-full px-2.5 py-1 border border-sky-200 rounded-lg outline-none text-xs font-bold text-sky-900 bg-sky-50/30 focus:bg-white" value={containerNo} onChange={e => setContainerNo(e.target.value)} placeholder="Örn: ZIMUIST26808847" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-indigo-700 mb-0.5">TÜRKÇE GÜMRÜK TANIMI (TR e-FATURA)</label>
+                <input type="text" className="w-full px-2.5 py-1 border border-indigo-300 rounded-lg outline-none text-xs font-semibold text-indigo-900 bg-indigo-50/40 focus:bg-white" value={customsDescriptionTR} onChange={e => setCustomsDescriptionTR(e.target.value)} placeholder="Örn: Yatak" />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">FARKLI SEVK ADRESİ (DELIVERY ADDRESS)</label>
+                <input type="text" className="w-full px-2.5 py-1 border rounded-lg outline-none text-xs" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Müşteri adresinden farklıysa yazın..." />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-amber-800 mb-1">📌 ÖZEL NOT / UYARI (NAKLİYE TALİMATINDA BELİRTİLİR)</label>
-                <input type="text" className="w-full px-3 py-1.5 border border-amber-300 rounded-lg outline-none text-sm font-semibold text-amber-950 bg-amber-50/40 focus:bg-white" value={specialNote} onChange={e => setSpecialNote(e.target.value)} placeholder="Örn: 📌 Customs support Marketing 19 6921 RE Duiven The Netherlands" />
+                <label className="block text-[11px] font-bold text-amber-800 mb-0.5">📌 ÖZEL NOT / UYARI (NAKLİYE TALİMATINDA BELİRTİLİR)</label>
+                <input type="text" className="w-full px-2.5 py-1 border border-amber-300 rounded-lg outline-none text-xs font-semibold text-amber-950 bg-amber-50/40 focus:bg-white" value={specialNote} onChange={e => setSpecialNote(e.target.value)} placeholder="Örn: 📌 Customs support Marketing 19 6921 RE Duiven The Netherlands" />
               </div>
-              <div className="flex items-center gap-4 bg-white px-3 py-1.5 border rounded-lg md:col-span-4">
+
+              {/* DUTY FEE, DOWN PAYMENT VE BEDELSİZ SEÇENEKLERİ */}
+              <div className="flex flex-wrap items-center gap-4 bg-white px-3 py-1.5 border rounded-lg md:col-span-4">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-rose-700 cursor-pointer">
+                  <input type="checkbox" checked={hasDutyFee} onChange={e => setHasDutyFee(e.target.checked)} className="w-4 h-4 accent-rose-600" />
+                  ABD / Gümrük Duty Fee Uygula (Sadece Malzeme Tutarından)
+                </label>
+                {hasDutyFee && (
+                  <div className="flex items-center gap-2 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                    <span className="text-[11px] font-bold text-rose-800">Oran (%):</span>
+                    <input type="number" step="0.01" value={dutyFeeRate} onChange={e => setDutyFeeRate(e.target.value)} className="w-16 px-1.5 py-0.5 border rounded text-xs font-black text-rose-700 text-center bg-white" />
+                    <input type="text" value={dutyFeeLabel} onChange={e => setDutyFeeLabel(e.target.value)} placeholder={`RECIP TR ${String(dutyFeeRate).replace('.', ',')} % DUTY`} className="w-44 px-2 py-0.5 border rounded text-xs font-bold text-rose-900 bg-white" title="Faturada görünecek Duty açıklaması" />
+                  </div>
+                )}
+
+                <span className="text-slate-300">|</span>
+
                 <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
                   <input type="checkbox" checked={hasDownPayment} onChange={e => setHasDownPayment(e.target.checked)} className="w-4 h-4 accent-red-600" />
                   Down Payment (Peşinat)
@@ -2142,13 +2267,47 @@
                 {hasDownPayment && (
                   <div className="flex items-center gap-1">
                     <span className="text-xs text-slate-500">Oran (%):</span>
-                    <input type="number" min="0" max="100" step="1" value={downPaymentRate} onChange={e => setDownPaymentRate(e.target.value)} className="w-16 px-2 py-0.5 border rounded text-xs font-bold text-red-600 text-center" />
+                    <input type="number" min="0" max="100" step="1" value={downPaymentRate} onChange={e => setDownPaymentRate(e.target.value)} className="w-14 px-1.5 py-0.5 border rounded text-xs font-bold text-red-600 text-center" />
                   </div>
                 )}
+
                 <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer ml-auto">
                   <input type="checkbox" checked={isFreeOfCharge} onChange={e => setIsFreeOfCharge(e.target.checked)} className="w-4 h-4 accent-blue-600" />
                   Bedelsiz
                 </label>
+              </div>
+
+              {/* EK MALİYET KALEMLERİ (FREIGHT, PATTERN, MACHINING, QUALITY CONTROL VB.) */}
+              <div className="md:col-span-4 bg-indigo-50/60 border border-indigo-200 rounded-lg p-2.5">
+                <div className="flex flex-wrap justify-between items-center gap-2">
+                  <div className="text-xs font-extrabold text-indigo-950 flex items-center gap-1.5">
+                    <span>➕ Fatura Ek Maliyet Kalemleri (Sadece Invoice'ta görünür, Çeki Listesine ve Ağırlığa girmez):</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button type="button" onClick={() => handleAddExtraCharge('Freight')} className="bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 px-2.5 py-1 rounded text-[11px] font-bold shadow-sm">+ Freight</button>
+                    <button type="button" onClick={() => handleAddExtraCharge('Pattern Cost')} className="bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 px-2.5 py-1 rounded text-[11px] font-bold shadow-sm">+ Pattern</button>
+                    <button type="button" onClick={() => handleAddExtraCharge('Machining Cost')} className="bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 px-2.5 py-1 rounded text-[11px] font-bold shadow-sm">+ Machining</button>
+                    <button type="button" onClick={() => handleAddExtraCharge('Quality Control Costs')} className="bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 px-2.5 py-1 rounded text-[11px] font-bold shadow-sm">+ Quality Control</button>
+                    <button type="button" onClick={() => handleAddExtraCharge('')} className="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded text-[11px] font-bold shadow-sm">+ Özel Maliyet Satırı</button>
+                  </div>
+                </div>
+
+                {extraCharges.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    {extraCharges.map((ec) => (
+                      <div key={ec.id} className="grid grid-cols-[140px_1fr_80px_120px_120px_32px] gap-2 items-center bg-white p-1.5 rounded border border-indigo-200 text-xs">
+                        <input type="text" placeholder="Order No (Opsiyonel)" value={ec.sipRefNo || ''} onChange={e => handleExtraChargeChange(ec.id, 'sipRefNo', e.target.value)} className="px-2 py-1 border rounded text-xs outline-none" />
+                        <input type="text" placeholder="Maliyet Açıklaması (Örn: Freight, Pattern, Machining...)" value={ec.description || ''} onChange={e => handleExtraChargeChange(ec.id, 'description', e.target.value)} className="px-2 py-1 border rounded text-xs font-bold text-indigo-950 outline-none" />
+                        <input type="number" placeholder="Adet" value={ec.adet ?? 1} onChange={e => handleExtraChargeChange(ec.id, 'adet', e.target.value)} className="px-2 py-1 border rounded text-xs text-center font-bold outline-none" />
+                        <input type="text" placeholder={`Birim Fiyat (${currency})`} value={ec.fiyat ?? ''} onChange={e => handleExtraChargeChange(ec.id, 'fiyat', e.target.value)} className="px-2 py-1 border rounded text-xs text-right font-semibold outline-none" />
+                        <div className="text-right font-extrabold text-indigo-900 px-2">
+                          {(parseFloat(ec.tutar) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
+                        </div>
+                        <button type="button" onClick={() => handleRemoveExtraCharge(ec.id)} className="text-red-500 hover:bg-red-50 p-1 rounded flex justify-center"><Trash2 size={15} /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2727,9 +2886,10 @@
       );
     }
 
-    // Kurumsal PROFORMA INVOICE A4 Görünümü (Hem tekli Proforma modunda hem İhracat Setinde kullanılır)
+    // Kurumsal PROFORMA INVOICE A4 Görünümü (Aynı kalemleri tek satırda toplar + Uzun Order/Drawing No uyumlu)
     function ProformaInvoicePage({ data, exporter, customer, deliveryTerm, showStamp, advanceRate, onRateChange }) {
-      const items = data?.items || [];
+      const rawItems = data?.items || [];
+      const items = useMemo(() => groupItemsForInvoice(rawItems), [rawItems]);
       const currency = data?.currency || 'EUR';
       const cleanDrawingNo = (str) => String(str || '').replace(/[-–—\s]+$/, '').trim();
 
@@ -2769,10 +2929,10 @@
       const invRowPad = isUltraCompact
         ? 'py-[2px] px-1.5 text-[8.5px]'
         : isCompact
-        ? 'py-[3px] px-2 text-[9px]'
+        ? 'py-[3px] px-1.5 text-[9px]'
         : isMediumRows
         ? 'py-1 px-2 text-[9.5px]'
-        : 'py-1.5 px-2.5 text-[10px]';
+        : 'py-1.5 px-2 text-[10px]';
 
       const emptyZebraCount = isFewRows ? Math.max(0, 9 - items.length) : 0;
 
@@ -2867,13 +3027,13 @@
           <div className="flex-1 flex flex-col border border-slate-300 rounded-t-xl overflow-hidden">
             <table className="w-full text-left border-collapse" style={{ tableLayout: 'fixed' }}>
               <colgroup>
-                <col className="w-[14.5%]" />
-                <col className="w-[5.5%]" />
-                <col className="w-[26%]" />
-                <col className="w-[12%]" />
-                <col className="w-[11%]" />
+                <col className="w-[17.5%]" />
+                <col className="w-[5%]" />
+                <col className="w-[23.5%]" />
                 <col className="w-[15%]" />
-                <col className="w-[16%]" />
+                <col className="w-[9.5%]" />
+                <col className="w-[14%]" />
+                <col className="w-[15.5%]" />
               </colgroup>
               <thead>
                 <tr className="bg-[#a80000] text-white text-center">
@@ -2903,12 +3063,17 @@
                   const fiyat = parseFloat(item.fiyat) || 0;
                   const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
                   const zebraBg = idx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
+                  const orderStr = String(item.sipRefNo || '');
+                  const dwgStr = cleanDrawingNo(item.resimNo);
+                  const orderFontClass = orderStr.length > 15 ? 'text-[8.5px] tracking-tighter leading-tight' : 'leading-snug';
+                  const dwgFontClass = dwgStr.length > 14 ? 'text-[8.5px] tracking-tighter leading-tight' : 'leading-snug';
+
                   return (
                     <tr key={idx} className={`${zebraBg} border-b border-slate-300`}>
-                      <td className={`border-r border-slate-300 ${invRowPad} truncate font-medium`}>{item.sipRefNo}</td>
+                      <td className={`border-r border-slate-300 ${invRowPad} ${orderFontClass} break-words font-medium`}>{orderStr}</td>
                       <td className={`border-r border-slate-300 ${invRowPad} text-center`}>{item.posNo}</td>
-                      <td className={`border-r border-slate-300 ${invRowPad} font-bold leading-snug`}>{item.parcaAdi}</td>
-                      <td className={`border-r border-slate-300 ${invRowPad} truncate`}>{cleanDrawingNo(item.resimNo)}</td>
+                      <td className={`border-r border-slate-300 ${invRowPad} font-bold leading-snug break-words`}>{item.parcaAdi}</td>
+                      <td className={`border-r border-slate-300 ${invRowPad} ${dwgFontClass} break-words font-medium`}>{dwgStr}</td>
                       <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap font-extrabold`}>{adet} PCS</td>
                       <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap`}>{fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</td>
                       <td className={`${invRowPad} text-right font-extrabold whitespace-nowrap`}>{tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</td>
@@ -3130,6 +3295,12 @@
       const [customDeliveryAddress, setCustomDeliveryAddress] = useState(checklist?.deliveryAddress || '');
       const [customsDescTR, setCustomsDescTR] = useState(checklist?.customsDescriptionTR || 'Yatak');
       const [specialNote, setSpecialNote] = useState(checklist?.specialNote || '');
+      const [shipmentNo, setShipmentNo] = useState(checklist?.shipmentNo || '');
+      const [bookingNo, setBookingNo] = useState(checklist?.bookingNo || '');
+      const [containerNo, setContainerNo] = useState(checklist?.containerNo || '');
+      const [hasDutyFee, setHasDutyFee] = useState(checklist?.hasDutyFee || false);
+      const [dutyFeeRate, setDutyFeeRate] = useState(checklist?.dutyFeeRate ?? 12.5);
+      const [dutyFeeLabel, setDutyFeeLabel] = useState(checklist?.dutyFeeLabel || '');
       const [copiedKey, setCopiedKey] = useState(null);
 
       const copyText = (text, key) => {
@@ -3141,24 +3312,53 @@
       };
 
       const items = checklist?.items || [];
+      const extraCharges = useMemo(() => (checklist?.extraCharges || []).filter(ec => ec && ec.description && String(ec.description).trim() !== ''), [checklist?.extraCharges]);
+      const invoiceItems = useMemo(() => groupItemsForInvoice(items), [items]);
       const processedRows = useMemo(() => processTableRows(items), [items]);
       const totals = useMemo(() => calculateTotals(items, processedRows), [items, processedRows]);
       const currency = checklist?.currency || 'EUR';
 
+      // Ek Maliyetler Toplamı (Freight, Pattern, Machining vb.)
+      const extraChargesTotal = useMemo(() => {
+        return extraCharges.reduce((sum, ec) => {
+          const a = parseFloat(String(ec.adet ?? 1).replace(',', '.')) || 0;
+          const f = parseFloat(String(ec.fiyat ?? 0).replace(',', '.')) || 0;
+          const t = parseFloat(String(ec.tutar ?? 0).replace(',', '.')) || (a * f) || 0;
+          return sum + t;
+        }, 0);
+      }, [extraCharges]);
+
+      // Net Amount = Malzeme Toplamı + Ek Maliyetler (Freight vb.)
+      const netInvoiceAmount = useMemo(() => {
+        return (totals?.totalTutar || 0) + extraChargesTotal;
+      }, [totals?.totalTutar, extraChargesTotal]);
+
+      // Duty Fee SADECE Malzeme Toplam Tutarından (totals.totalTutar) hesaplanır!
+      const dutyFeeAmount = useMemo(() => {
+        if (!hasDutyFee) return 0;
+        return ((totals?.totalTutar || 0) * (Number(dutyFeeRate) || 0)) / 100;
+      }, [hasDutyFee, dutyFeeRate, totals?.totalTutar]);
+
+      // Genel Fatura Toplamı (Invoice Amount) = Net Amount + Duty Fee
+      const finalInvoiceAmount = useMemo(() => {
+        return netInvoiceAmount + dutyFeeAmount;
+      }, [netInvoiceAmount, dutyFeeAmount]);
+
       const downPaymentAmount = useMemo(() => {
         if (!hasDownPayment) return 0;
-        return (totals.totalTutar * (Number(downPaymentRate) || 0)) / 100;
-      }, [hasDownPayment, downPaymentRate, totals.totalTutar]);
+        return (finalInvoiceAmount * (Number(downPaymentRate) || 0)) / 100;
+      }, [hasDownPayment, downPaymentRate, finalInvoiceAmount]);
 
       const remainingAmount = useMemo(() => {
-        if (!hasDownPayment) return totals.totalTutar;
-        return Math.max(0, totals.totalTutar - downPaymentAmount);
-      }, [hasDownPayment, totals.totalTutar, downPaymentAmount]);
+        if (!hasDownPayment) return finalInvoiceAmount;
+        return Math.max(0, finalInvoiceAmount - downPaymentAmount);
+      }, [hasDownPayment, finalInvoiceAmount, downPaymentAmount]);
 
       const rawInvoiceDate = checklist?.checklistDate || new Date().toISOString().split('T')[0];
       const invoiceDate = formatDateTR(rawInvoiceDate);
       const formattedDeliveryDate = formatDateTR(deliveryDate);
       const hasCustomDelivery = Boolean(customDeliveryAddress && customDeliveryAddress.trim() !== '');
+      const hasContainerInfo = Boolean((shipmentNo && shipmentNo.trim()) || (bookingNo && bookingNo.trim()) || (containerNo && containerNo.trim()));
 
       const cleanDrawingNo = (str) => String(str || '').replace(/[-–—\s]+$/, '').trim();
 
@@ -3181,10 +3381,11 @@
       const selectedInsurance = exporter?.insurances?.find(i => i.id === checklist?.selectedInsuranceId) || exporter?.insurances?.[0];
 
       // Kısa ve Uzun listeler için dinamik satır yüksekliği ve yazı boyutu
+      const totalInvoiceRowCount = invoiceItems.length + extraCharges.length;
       const isFewRows = items.length <= 10;
-      const isMediumRows = items.length > 10 && items.length <= 18;
-      const isCompact = items.length > 18;
-      const isUltraCompact = items.length > 25;
+      const isMediumRows = totalInvoiceRowCount > 10 && totalInvoiceRowCount <= 18;
+      const isCompact = totalInvoiceRowCount > 18;
+      const isUltraCompact = totalInvoiceRowCount > 25;
 
       const invRowPad = isUltraCompact
         ? 'py-[2px] px-1.5 text-[8.5px]'
@@ -3194,17 +3395,21 @@
         ? 'py-1 px-2 text-[9.5px]'
         : 'py-1.5 px-2 text-[10px]';
 
-      const packRowPad = isUltraCompact
+      const packRowPad = items.length > 25
         ? 'py-[2px] px-1.5 text-[8.5px]'
-        : isCompact
+        : items.length > 18
         ? 'py-[3px] px-2 text-[9px]'
-        : isMediumRows
+        : items.length > 10
         ? 'py-1 px-2 text-[9.5px]'
         : 'py-1.5 px-2.5 text-[10px]';
 
       // Kısa fatura ve çeki listelerinde ekstra boş zebra satırları
-      const emptyZebraCount = isFewRows ? Math.max(0, 9 - items.length) : 0;
-      const emptyPackingZebraCount = isFewRows ? Math.max(0, 8 - items.length) : 0;
+      const emptyZebraCount = totalInvoiceRowCount <= 10 ? Math.max(0, (hasContainerInfo ? 7 : 9) - totalInvoiceRowCount) : 0;
+      const emptyPackingZebraCount = isFewRows ? Math.max(0, (hasContainerInfo ? 6 : 8) - items.length) : 0;
+
+      const effectiveDutyLabel = dutyFeeLabel && dutyFeeLabel.trim() !== ''
+        ? dutyFeeLabel.trim()
+        : `RECIP TR ${Number(dutyFeeRate || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} % DUTY`;
 
       const tabs = [
         { id: 'proforma', label: 'Proforma Invoice' },
@@ -3231,74 +3436,83 @@
 
       return (
         <div className="fixed inset-0 bg-slate-900/90 z-50 flex flex-col p-4 print-modal-wrapper">
-          <div className="bg-white rounded-xl shadow-2xl max-w-[1120px] mx-auto w-full flex-1 flex flex-col overflow-hidden border border-slate-300 print-modal-inner">
+          <div className="bg-white rounded-xl shadow-2xl max-w-[1160px] mx-auto w-full flex-1 flex flex-col overflow-hidden border border-slate-300 print-modal-inner">
             {/* Modal Header & Tabs (Yazdırırken Gizlenir) */}
             <div className="no-print bg-slate-100 flex flex-col z-10 shrink-0">
-              <div className="p-3.5 flex flex-wrap justify-between items-center gap-3 border-b border-slate-300">
+              <div className="p-3 flex flex-wrap justify-between items-center gap-2 border-b border-slate-300">
                 <div className="flex items-center gap-2">
                   <Layers className="text-indigo-600 w-5 h-5" />
-                  <h3 className="text-base font-bold text-slate-800">Tam İhracat Seti</h3>
+                  <h3 className="text-sm font-bold text-slate-800">Tam İhracat Seti</h3>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <div className="flex flex-wrap items-center gap-2.5 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm text-xs">
-                    <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 bg-white px-2.5 py-1 rounded-lg border border-slate-300 shadow-sm text-[11px]">
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold text-red-700">Shipment:</span>
+                      <input type="text" value={shipmentNo} onChange={e => setShipmentNo(e.target.value)} placeholder="Shipment No. 23" className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px] font-bold text-red-700 w-28 outline-none" />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold text-blue-800">Booking:</span>
+                      <input type="text" value={bookingNo} onChange={e => setBookingNo(e.target.value)} placeholder="ELK20262456" className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px] font-bold text-blue-900 w-24 outline-none" />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold text-sky-800">📦 Cont:</span>
+                      <input type="text" value={containerNo} onChange={e => setContainerNo(e.target.value)} placeholder="ZIMUIST..." className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px] font-bold text-sky-900 w-28 outline-none" />
+                    </div>
+                    <span className="text-slate-300">|</span>
+                    <div className="flex items-center gap-1">
                       <span className="font-semibold text-slate-600">Sevk Adresi:</span>
                       <input 
                         type="text" 
                         value={customDeliveryAddress} 
                         onChange={e => setCustomDeliveryAddress(e.target.value)} 
                         placeholder="Farklı sevk adresi..."
-                        className="border border-slate-300 rounded px-2 py-0.5 text-xs font-semibold text-blue-800 outline-none focus:border-indigo-500 w-44"
+                        className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px] font-semibold text-blue-800 outline-none w-36"
                       />
                     </div>
                     {(activeTab === 'invoice' || activeTab === 'proforma') && (
                       <>
                         <span className="text-slate-300">|</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-slate-600">Delivery Date:</span>
-                          <input 
-                            type="date" 
-                            value={deliveryDate} 
-                            onChange={e => setDeliveryDate(e.target.value)} 
-                            className="border border-slate-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
-                          />
-                        </div>
-                        <span className="text-slate-300">|</span>
-                        <label className="flex items-center gap-1.5 font-bold text-slate-700 cursor-pointer">
-                          <input type="checkbox" checked={isFreeOfCharge} onChange={e => setIsFreeOfCharge(e.target.checked)} className="w-3.5 h-3.5 accent-slate-800" />
-                          BEDELSİZ
+                        <label className="flex items-center gap-1 font-bold text-rose-700 cursor-pointer" title="Sadece Malzeme Toplam Tutarından Hesaplanır">
+                          <input type="checkbox" checked={hasDutyFee} onChange={e => setHasDutyFee(e.target.checked)} className="w-3.5 h-3.5 accent-rose-600" />
+                          Duty%
                         </label>
+                        {hasDutyFee && (
+                          <input 
+                            type="number" 
+                            step="0.01"
+                            value={dutyFeeRate} 
+                            onChange={e => setDutyFeeRate(e.target.value)} 
+                            className="w-12 border border-rose-300 rounded px-1 py-0.5 text-center font-black text-rose-700 outline-none"
+                          />
+                        )}
                         <span className="text-slate-300">|</span>
-                        <label className="flex items-center gap-1.5 font-bold text-red-700 cursor-pointer">
+                        <label className="flex items-center gap-1 font-bold text-red-700 cursor-pointer">
                           <input type="checkbox" checked={hasDownPayment} onChange={e => setHasDownPayment(e.target.checked)} className="w-3.5 h-3.5 accent-red-600" />
-                          Down Payment
+                          Peşinat%
                         </label>
                         {hasDownPayment && (
-                          <div className="flex items-center border border-slate-300 rounded overflow-hidden">
-                            <input 
-                              type="number" 
-                              value={downPaymentRate} 
-                              onChange={e => setDownPaymentRate(e.target.value)} 
-                              className="w-12 px-1.5 py-0.5 text-center font-bold text-red-600 outline-none"
-                            />
-                            <span className="bg-slate-100 px-1.5 py-0.5 font-bold text-slate-600">%</span>
-                          </div>
+                          <input 
+                            type="number" 
+                            value={downPaymentRate} 
+                            onChange={e => setDownPaymentRate(e.target.value)} 
+                            className="w-10 border border-slate-300 rounded px-1 py-0.5 text-center font-bold text-red-600 outline-none"
+                          />
                         )}
                       </>
                     )}
                   </div>
 
                   {exporter?.stamp && (
-                    <label className="flex items-center gap-2 cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 px-3 py-1.5 rounded-lg border border-amber-300 text-xs font-bold shadow-sm transition-colors">
-                      <input type="checkbox" checked={showStamp} onChange={(e) => setShowStamp(e.target.checked)} className="w-4 h-4 cursor-pointer accent-amber-600" />
-                      Kaşe/İmza Bas
+                    <label className="flex items-center gap-1.5 cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 px-2.5 py-1.5 rounded-lg border border-amber-300 text-xs font-bold shadow-sm transition-colors">
+                      <input type="checkbox" checked={showStamp} onChange={(e) => setShowStamp(e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-amber-600" />
+                      Kaşe
                     </label>
                   )}
-                  <button type="button" onClick={() => window.print()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-1.5 rounded-lg font-bold flex items-center shadow-md transition-colors text-sm">
-                    <Printer size={16} className="mr-1.5" /> Yazdır (A4)
+                  <button type="button" onClick={() => window.print()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg font-bold flex items-center shadow-md transition-colors text-xs">
+                    <Printer size={15} className="mr-1" /> Yazdır (A4)
                   </button>
-                  <button type="button" onClick={onClose} className="bg-slate-300 text-slate-700 hover:bg-slate-400 px-4 py-1.5 rounded-lg font-medium text-sm transition-colors">Kapat</button>
+                  <button type="button" onClick={onClose} className="bg-slate-300 text-slate-700 hover:bg-slate-400 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors">Kapat</button>
                 </div>
               </div>
 
@@ -3322,7 +3536,7 @@
               {/* 0. PROFORMA INVOICE */}
               {activeTab === 'proforma' && (
                 <ProformaInvoicePage
-                  data={{ ...checklist, deliveryAddress: customDeliveryAddress, deliveryDate }}
+                  data={{ ...checklist, deliveryAddress: customDeliveryAddress, deliveryDate, shipmentNo, bookingNo, containerNo }}
                   exporter={exporter}
                   customer={customer}
                   deliveryTerm={transporter?.deliveryTerm || 'DAP'}
@@ -3332,7 +3546,7 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 1. INVOICE (Drawing No Sütunu Genişletildi, Kesilme Önlenen Mükemmel Stil) */}
+              {/* 1. INVOICE (Konteyner Bilgileri, Ek Maliyetler ve ABD Duty Fee Uyumlu) */}
               {/* ========================================================================= */}
               {activeTab === 'invoice' && (
                 <div className="bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
@@ -3415,13 +3629,13 @@
                   <div className="flex-1 flex flex-col border border-slate-300 rounded-t-xl overflow-hidden">
                     <table className="w-full text-left border-collapse" style={{tableLayout: 'fixed'}}>
                       <colgroup>
-                        <col className="w-[14%]" />
+                        <col className="w-[17.5%]" />
                         <col className="w-[5%]" />
-                        <col className="w-[24%]" />
+                        <col className="w-[23.5%]" />
                         <col className="w-[15%]" />
-                        <col className="w-[11%]" />
-                        <col className="w-[15%]" />
-                        <col className="w-[16%]" />
+                        <col className="w-[9.5%]" />
+                        <col className="w-[14%]" />
+                        <col className="w-[15.5%]" />
                       </colgroup>
                       <thead>
                         <tr className="bg-[#a80000] text-white text-center">
@@ -3446,26 +3660,56 @@
                         </tr>
                       </thead>
                       <tbody className="align-middle text-black">
-                        {items.map((item, idx) => {
+                        {/* 1. MALZEME SATIRLARI */}
+                        {invoiceItems.map((item, idx) => {
                             const adet = parseFloat(item.adet) || 0;
                             const fiyat = parseFloat(item.fiyat) || 0;
                             const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
                             const isEven = idx % 2 === 1;
                             const zebraBg = isEven ? 'bg-[#eef2f7]' : 'bg-white';
+                            const orderStr = String(item.sipRefNo || '');
+                            const dwgStr = cleanDrawingNo(item.resimNo);
+                            const orderFontClass = orderStr.length > 15 ? 'text-[8.5px] tracking-tighter leading-tight' : 'leading-snug';
+                            const dwgFontClass = dwgStr.length > 14 ? 'text-[8.5px] tracking-tighter leading-tight' : 'leading-snug';
+
                             return (
                               <tr key={idx} className={`${zebraBg} border-b border-slate-300`}>
-                                <td className={`border-r border-slate-300 ${invRowPad} whitespace-nowrap font-medium`}>{item.sipRefNo}</td>
+                                <td className={`border-r border-slate-300 ${invRowPad} ${orderFontClass} break-words font-medium`}>{orderStr}</td>
                                 <td className={`border-r border-slate-300 ${invRowPad} text-center`}>{item.posNo}</td>
-                                <td className={`border-r border-slate-300 ${invRowPad} font-bold leading-snug truncate`}>{item.parcaAdi}</td>
-                                <td className={`border-r border-slate-300 ${invRowPad} whitespace-nowrap font-medium`}>{cleanDrawingNo(item.resimNo)}</td>
+                                <td className={`border-r border-slate-300 ${invRowPad} font-bold leading-snug break-words`}>{item.parcaAdi}</td>
+                                <td className={`border-r border-slate-300 ${invRowPad} ${dwgFontClass} break-words font-medium`}>{dwgStr}</td>
                                 <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap font-extrabold`}>{adet} PCS</td>
                                 <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap`}>{fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
                                 <td className={`${invRowPad} text-right font-extrabold whitespace-nowrap`}>{tutar.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
                               </tr>
                             );
                         })}
+
+                        {/* 2. EK MALİYET SATIRLARI (FREIGHT, PATTERN, MACHINING, QUALITY CONTROL VB.) */}
+                        {extraCharges.map((ec, ecIdx) => {
+                            const totalIdx = invoiceItems.length + ecIdx;
+                            const zebraBg = totalIdx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
+                            const adet = parseFloat(String(ec.adet ?? 1).replace(',', '.')) || 1;
+                            const fiyat = parseFloat(String(ec.fiyat ?? 0).replace(',', '.')) || 0;
+                            const tutar = parseFloat(String(ec.tutar ?? 0).replace(',', '.')) || (adet * fiyat) || 0;
+                            const orderStr = String(ec.sipRefNo || '');
+
+                            return (
+                              <tr key={`ec-${ecIdx}`} className={`${zebraBg} border-b border-slate-300`}>
+                                <td className={`border-r border-slate-300 ${invRowPad} break-words font-medium`}>{orderStr}</td>
+                                <td className={`border-r border-slate-300 ${invRowPad} text-center`}></td>
+                                <td className={`border-r border-slate-300 ${invRowPad} font-bold leading-snug break-words text-black`}>{ec.description}</td>
+                                <td className={`border-r border-slate-300 ${invRowPad}`}></td>
+                                <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap font-extrabold`}>{adet} PCS</td>
+                                <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap`}>{fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
+                                <td className={`${invRowPad} text-right font-extrabold whitespace-nowrap`}>{tutar.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
+                              </tr>
+                            );
+                        })}
+
+                        {/* 3. TAMAMLAYICI BOŞ ZEBRA SATIRLARI */}
                         {Array.from({ length: emptyZebraCount }).map((_, eIdx) => {
-                          const totalIdx = items.length + eIdx;
+                          const totalIdx = totalInvoiceRowCount + eIdx;
                           const zebraBg = totalIdx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
                           return (
                             <tr key={`empty-${eIdx}`} className={`${zebraBg} border-b border-slate-300 h-[24px]`}>
@@ -3482,7 +3726,29 @@
                       </tbody>
                     </table>
 
-                    <div className="flex-1 bg-white min-h-[8px]"></div>
+                    <div className="flex-1 bg-white min-h-[6px]"></div>
+
+                    {/* SHIPMENT NO / BOOKING NO / CONTAINER NO BLOĞU (Örnek Görseldeki Gibi Sol Altta) */}
+                    {hasContainerInfo && (
+                      <div className="bg-white border-t border-slate-300 px-3 py-1.5 flex flex-wrap items-center gap-6 text-[10px] shrink-0">
+                        {shipmentNo && (
+                          <div className="font-black text-[#a80000]">
+                            {shipmentNo.toLowerCase().startsWith('shipment') ? shipmentNo : `Shipment No. ${shipmentNo}`}
+                          </div>
+                        )}
+                        {bookingNo && (
+                          <div className="font-extrabold text-[#003d99]">
+                            {bookingNo.toLowerCase().startsWith('booking') ? bookingNo : `Booking ${bookingNo}`}
+                          </div>
+                        )}
+                        {containerNo && (
+                          <div className="font-extrabold text-[#0047b3] flex items-center gap-1">
+                            <Icon name="package" size={13} className="text-[#0047b3]" />
+                            <span>{containerNo}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <table className="w-full text-left border-collapse border-t border-slate-300 shrink-0" style={{tableLayout: 'fixed'}}>
                       <colgroup>
@@ -3502,7 +3768,7 @@
                             )}
                             <div className="flex justify-between items-end font-extrabold text-[11px] text-black">
                               <span>Net Amount</span>
-                              <span>{totals?.totalTutar?.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
+                              <span>{netInvoiceAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
                             </div>
                           </td>
                         </tr>
@@ -3543,15 +3809,24 @@
                           <td className="p-0 align-top bg-white h-full">
                             <div className="flex flex-col justify-between h-full font-bold text-[10.5px]" style={{ minHeight: '152px' }}>
                               <div>
-                                <div className="flex justify-between items-center px-2.5 py-1.5 text-[#003d99] bg-[#eef2f7] border-b border-slate-300 text-[11px]">
-                                   <span className="font-extrabold">VAT</span>
-                                   <span className="font-extrabold">0,00 .-{getSymbol(currency)}</span>
-                                </div>
+                                {/* ABD DUTY FEE AKTİFSE TAX / RECIP TR % DUTY GÖSTERİLİR, DEĞİLSE STANDART VAT 0,00 */}
+                                {hasDutyFee ? (
+                                  <div className="flex justify-between items-center px-2.5 py-1.5 text-[#a80000] bg-[#eef2f7] border-b border-slate-300 text-[10.5px]">
+                                    <span className="font-black">TAX</span>
+                                    <span className="font-black text-[9.5px] uppercase px-1 text-center">{effectiveDutyLabel}</span>
+                                    <span className="font-black whitespace-nowrap">{dutyFeeAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex justify-between items-center px-2.5 py-1.5 text-[#003d99] bg-[#eef2f7] border-b border-slate-300 text-[11px]">
+                                    <span className="font-extrabold">VAT</span>
+                                    <span className="font-extrabold">0,00 .-{getSymbol(currency)}</span>
+                                  </div>
+                                )}
 
                                 <div className="flex justify-between items-center px-2.5 py-2 border-b-4 border-double border-slate-400 text-[11px] bg-white">
                                    <span className="font-extrabold text-black">Invoice Amount</span>
-                                   <span className="text-[#a80000] text-[9.5px] font-black uppercase text-center px-1">{customer?.country} {transporter?.deliveryTerm}</span>
-                                   <span className="font-black text-black">{totals?.totalTutar?.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
+                                   <span className="text-[#a80000] text-[9.5px] font-black uppercase text-center px-1">{transporter?.deliveryTerm} {customer?.country}</span>
+                                   <span className="font-black text-black whitespace-nowrap">{finalInvoiceAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
                                 </div>
 
                                 {hasDownPayment && (
@@ -3575,7 +3850,7 @@
 
                               <div className="py-2 px-2 text-center bg-[#eef2f7] border-t border-b border-slate-300 my-auto">
                                 <span className="text-[#003d99] italic text-[8.5px] font-semibold leading-tight block">
-                                  {getAmountInWords(hasDownPayment ? remainingAmount : totals?.totalTutar, currency)}
+                                  {getAmountInWords(hasDownPayment ? remainingAmount : finalInvoiceAmount, currency)}
                                 </span>
                                 {isFreeOfCharge && (
                                   <span className="text-[#a80000] font-bold text-[8px] block mt-0.5 uppercase not-italic">
@@ -3612,7 +3887,7 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 2. PACKING LIST / ÇEKİ LİSTESİ (Invoice ile Birebir Aynı Oval & Zebra Stil) */}
+              {/* 2. PACKING LIST / ÇEKİ LİSTESİ (Shipment, Booking & Container No Dahil) */}
               {/* ========================================================================= */}
               {activeTab === 'packing' && (
                 <div className="bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
@@ -3623,7 +3898,7 @@
                       {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-h-[78px] max-w-[240px] object-contain" />}
                     </div>
 
-                    {/* CUSTOMER INFO CARD (Oval Köşeli & Zarif Çerçeveli) */}
+                    {/* CUSTOMER INFO CARD */}
                     <div className="border border-slate-300 rounded-xl bg-white mb-2.5 text-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.03)] overflow-hidden">
                       <div className="grid grid-cols-[110px_1fr_180px] gap-3 p-3 items-center">
                         <div className="font-extrabold text-[#0047b3] self-start pt-0.5 tracking-wider uppercase text-[10px]">CUSTOMER</div>
@@ -3632,7 +3907,7 @@
                           <div className="text-black mt-0.5 leading-snug">{customer?.address}</div>
                           <div className="flex items-center gap-6 mt-1.5 font-extrabold text-black">
                             <span className="uppercase">{customer?.country}</span>
-                            <span>VAT ID: {customer?.vatNo}</span>
+                            {customer?.vatNo && <span>VAT ID: {customer.vatNo}</span>}
                           </div>
                         </div>
                         <div className="flex flex-col items-end justify-between h-full">
@@ -3653,7 +3928,7 @@
                       )}
                     </div>
 
-                    {/* YOUR ORDER NO CARD (Oval Köşeli) */}
+                    {/* YOUR ORDER NO CARD */}
                     <div className="grid grid-cols-[110px_1fr] gap-3 text-[9.5px] mb-2 border border-slate-300 rounded-xl px-3 py-2 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)] items-center">
                       <div className="font-extrabold uppercase text-[#0047b3] tracking-wider">YOUR ORDER NO</div>
                       <div className="leading-snug font-bold text-black border-l border-slate-200 pl-3.5">{uniqueOrders}</div>
@@ -3664,7 +3939,7 @@
                     </div>
                   </div>
 
-                  {/* ORTA & ALT ENTEGRE TABLO BLOĞU (Invoice ile Aynı Oval Konteyner ve Zebra Yapısı) */}
+                  {/* ORTA & ALT ENTEGRE TABLO BLOĞU */}
                   <div className="flex-1 flex flex-col border border-slate-300 rounded-xl overflow-hidden bg-white">
                     <table className="w-full text-center border-collapse" style={{tableLayout: 'fixed'}}>
                       <colgroup>
@@ -3699,7 +3974,6 @@
                         {processedRows.map((rowInfo, idx) => {
                           const item = rowInfo.item;
                           const isEven = idx % 2 === 1;
-                          // Birleştirilmiş paletse kurumsal buz mavisi tonunu kullan, tekil paletse Invoice gibi zebra (beyaz / #eef2f7) kullan
                           const rowBg = rowInfo.isMerged ? rowInfo.groupColor : (isEven ? 'bg-[#eef2f7]' : 'bg-white');
                           const cleanedDwg = cleanDrawingNo(item.resimNo);
 
@@ -3725,7 +3999,6 @@
                             </tr>
                           );
                         })}
-                        {/* Kısa Çeki Listelerinde Invoice gibi tamamlayıcı boş zebra satırları */}
                         {Array.from({ length: emptyPackingZebraCount }).map((_, eIdx) => {
                           const totalIdx = processedRows.length + eIdx;
                           const zebraBg = totalIdx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
@@ -3746,7 +4019,29 @@
                     {/* ESNEK A4 GÖVDE BOŞLUĞU */}
                     <div className="flex-1 bg-white min-h-[6px]"></div>
 
-                    {/* ALT REGÜLASYON & TOTAL BAR (Oval Konteynerin Altına Entegre) */}
+                    {/* SHIPMENT NO / BOOKING NO / CONTAINER NO BLOĞU (image_339afb.png Görselindeki Gibi) */}
+                    {hasContainerInfo && (
+                      <div className="bg-white border-t border-slate-300 px-3 py-1.5 flex flex-wrap items-center gap-6 text-[10px] shrink-0">
+                        {shipmentNo && (
+                          <div className="font-black text-[#a80000]">
+                            {shipmentNo.toLowerCase().startsWith('shipment') ? shipmentNo : `Shipment No. ${shipmentNo}`}
+                          </div>
+                        )}
+                        {bookingNo && (
+                          <div className="font-extrabold text-black">
+                            {bookingNo.toLowerCase().startsWith('booking') ? bookingNo : `Booking ${bookingNo}`}
+                          </div>
+                        )}
+                        {containerNo && (
+                          <div className="font-extrabold text-[#0047b3] flex items-center gap-1">
+                            <Icon name="package" size={13} className="text-[#0047b3]" />
+                            <span>{containerNo}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ALT REGÜLASYON & TOTAL BAR */}
                     <div className="bg-[#eef2f7] py-1.5 px-3 text-center text-[#003d99] font-bold text-[8px] border-t border-b border-slate-300 leading-snug shrink-0">
                       According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
                     </div>
@@ -3768,8 +4063,8 @@
                           <td className="border-r border-slate-300 py-2 px-1 font-black whitespace-nowrap">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
                           <td className="border-r border-slate-300 py-2 px-1 font-black whitespace-nowrap">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
                           <td className="py-2 px-1 text-center align-middle bg-[#eef2f7]/60">
-                            <span className="text-[#0047b3] italic font-black inline-flex items-center justify-center gap-1">
-                              TCT <Truck size={11} className="inline text-[#0047b3]"/>
+                            <span className="text-[#0047b3] font-black text-[9px] leading-tight block">
+                              {transporter?.deliveryTerm ? `${transporter.deliveryTerm} ${customer?.country || ''}` : 'TCT'}
                             </span>
                           </td>
                         </tr>
@@ -3802,7 +4097,7 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 3. İŞ EMRİ (Invoice Tasarım Dilinde Oval Kartlar & Bordo Başlık) */}
+              {/* 3. İŞ EMRİ */}
               {/* ========================================================================= */}
               {activeTab === 'workOrder' && (
                 <div className="bg-white p-7 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page flex flex-col justify-between border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
@@ -3854,7 +4149,7 @@
 
                         <div className="font-extrabold text-[#0047b3] pt-2.5">MAL BEDELİ ({transporter?.deliveryTerm || 'CIF'})</div><div className="font-bold pt-2.5">:</div>
                         <div className="flex justify-between items-center font-bold pt-2.5">
-                          <span className="text-[#a80000] font-black text-sm">{totals?.totalTutar?.toLocaleString('tr-TR', {minimumFractionDigits:2})} {currency}</span>
+                          <span className="text-[#a80000] font-black text-sm">{finalInvoiceAmount.toLocaleString('tr-TR', {minimumFractionDigits:2})} {currency}</span>
                           <span className="bg-[#eef2f7] border border-slate-300 rounded-lg px-3 py-1 flex gap-2 text-xs">
                             <span className="font-bold text-[#0047b3]">NAKLİYECİ:</span> <span className="font-extrabold text-black">{transporter?.name}</span>
                           </span>
@@ -3911,7 +4206,7 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 4. NAKLİYE TALİMATI (Özel Not ve Yetkili Telefon No Dahil) */}
+              {/* 4. NAKLİYE TALİMATI */}
               {/* ========================================================================= */}
               {activeTab === 'transport' && (
                 <div className="bg-white p-7 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page flex flex-col justify-between border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
@@ -4003,7 +4298,6 @@
                       <div className="font-extrabold text-black">SAYGILI GÜMRÜK MÜŞAVİRLİĞİ LTD. ŞTİ.</div>
                     </div>
 
-                    {/* ÖZEL NOT / UYARI KUTUSU (Varsa Gösterilir) */}
                     {specialNote && specialNote.trim() !== '' && (
                       <div className="mt-3 border-2 border-[#a80000] rounded-xl p-3 bg-rose-50/70 text-xs leading-snug">
                         <span className="font-black text-[#a80000] uppercase tracking-wide mr-1.5">ÖZEL NOT / TALİMAT:</span>
@@ -4031,7 +4325,7 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 5. SİGORTA TALİMATI (Invoice Tasarım Dilinde Oval Kartlar & Bordo Başlık) */}
+              {/* 5. SİGORTA TALİMATI */}
               {/* ========================================================================= */}
               {activeTab === 'insurance' && (
                 <div className="bg-white p-7 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page flex flex-col justify-between border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
@@ -4081,7 +4375,7 @@
 
                         <div className="font-extrabold text-[#a80000] pt-2.5">SİGORTALANACAK BEDEL</div><div className="font-bold pt-2.5">:</div>
                         <div className="font-black text-sm text-[#a80000] pt-2.5">
-                          {totals?.totalTutar?.toLocaleString('tr-TR', {minimumFractionDigits:2})} {currency}
+                          {finalInvoiceAmount.toLocaleString('tr-TR', {minimumFractionDigits:2})} {currency}
                         </div>
 
                         <div className="font-extrabold text-[#0047b3] self-start pt-2.5">SİGORTALI FİRMA</div><div className="font-bold self-start pt-2.5">:</div>
@@ -4124,7 +4418,7 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 6. A.TR BELGESİ (Standart Gümrük Formu Düzeni) */}
+              {/* 6. A.TR BELGESİ */}
               {/* ========================================================================= */}
               {activeTab === 'atr' && (
                 <div className="bg-white p-4 mx-auto w-full shadow-lg text-xs relative print-page flex flex-col font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
@@ -4226,8 +4520,8 @@
                             <div className="font-black text-[10.5px] uppercase mb-1.5 text-[#0047b3]">
                               {uniquePartNames || 'STEEL CASTING PARTS'}
                             </div>
-                            <div className={`${items.length > 20 ? 'space-y-[1px] text-[8.5px]' : 'space-y-0.5 text-[10px]'} font-normal text-black`}>
-                              {items.map((item, idx) => {
+                            <div className={`${invoiceItems.length > 20 ? 'space-y-[1px] text-[8.5px]' : 'space-y-0.5 text-[10px]'} font-normal text-black`}>
+                              {invoiceItems.map((item, idx) => {
                                 const cleanedDwg = cleanDrawingNo(item.resimNo);
                                 const leftPart = [cleanedDwg, item.parcaAdi].filter(Boolean).join(' — ');
                                 return (
@@ -4304,15 +4598,21 @@
                       <button
                         type="button"
                         onClick={() => {
-                          const allLines = items.map((item, idx) => {
+                          const matLines = invoiceItems.map((item, idx) => {
                             const adet = parseFloat(item.adet) || 0;
                             const fiyat = parseFloat(item.fiyat) || 0;
                             const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
                             const bracketParts = [item.adsIsNo, item.parcaAdi, item.sipRefNo, cleanDrawingNo(item.resimNo)].map(s => String(s || '').trim()).filter(Boolean).join(', ');
                             const desc = `${customsDescTR.trim()} [${bracketParts}]`.trim();
                             return `${idx + 1}\t${desc}\t${adet}\t${fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\t${tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                          }).join('\n');
-                          copyText(allLines, 'all-table');
+                          });
+                          const extraLines = extraCharges.map((ec, eIdx) => {
+                            const adet = parseFloat(String(ec.adet ?? 1).replace(',', '.')) || 1;
+                            const fiyat = parseFloat(String(ec.fiyat ?? 0).replace(',', '.')) || 0;
+                            const tutar = parseFloat(String(ec.tutar ?? 0).replace(',', '.')) || (adet * fiyat) || 0;
+                            return `${invoiceItems.length + eIdx + 1}\t${ec.description}\t${adet}\t${fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\t${tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                          });
+                          copyText([...matLines, ...extraLines].join('\n'), 'all-table');
                         }}
                         className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-colors"
                       >
@@ -4325,13 +4625,19 @@
                           if (!window.XLSX) return;
                           const rows = [
                             ["SIRA NO", "MAL / HİZMET AÇIKLAMASI (GİB TR-FATURA)", "MİKTAR (ADET)", `BİRİM FİYAT (${currency})`, `TOPLAM TUTAR (${currency})`],
-                            ...items.map((item, idx) => {
+                            ...invoiceItems.map((item, idx) => {
                               const adet = parseFloat(item.adet) || 0;
                               const fiyat = parseFloat(item.fiyat) || 0;
                               const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
                               const bracketParts = [item.adsIsNo, item.parcaAdi, item.sipRefNo, cleanDrawingNo(item.resimNo)].map(s => String(s || '').trim()).filter(Boolean).join(', ');
                               const desc = `${customsDescTR.trim()} [${bracketParts}]`.trim();
                               return [idx + 1, desc, adet, Number(fiyat.toFixed(2)), Number(tutar.toFixed(2))];
+                            }),
+                            ...extraCharges.map((ec, eIdx) => {
+                              const adet = parseFloat(String(ec.adet ?? 1).replace(',', '.')) || 1;
+                              const fiyat = parseFloat(String(ec.fiyat ?? 0).replace(',', '.')) || 0;
+                              const tutar = parseFloat(String(ec.tutar ?? 0).replace(',', '.')) || (adet * fiyat) || 0;
+                              return [invoiceItems.length + eIdx + 1, ec.description, adet, Number(fiyat.toFixed(2)), Number(tutar.toFixed(2))];
                             })
                           ];
                           const ws = window.XLSX.utils.aoa_to_sheet(rows);
@@ -4380,7 +4686,7 @@
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {items.map((item, idx) => {
+                        {invoiceItems.map((item, idx) => {
                           const adet = parseFloat(item.adet) || 0;
                           const fiyat = parseFloat(item.fiyat) || 0;
                           const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
@@ -4453,6 +4759,46 @@
                             </tr>
                           );
                         })}
+
+                        {/* Ek Maliyet Satırları (Freight, Pattern vb.) */}
+                        {extraCharges.map((ec, eIdx) => {
+                          const rowIdx = invoiceItems.length + eIdx;
+                          const adet = parseFloat(String(ec.adet ?? 1).replace(',', '.')) || 1;
+                          const fiyat = parseFloat(String(ec.fiyat ?? 0).replace(',', '.')) || 0;
+                          const tutar = parseFloat(String(ec.tutar ?? 0).replace(',', '.')) || (adet * fiyat) || 0;
+                          const fiyatFormatted = fiyat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          const tutarFormatted = tutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                          return (
+                            <tr key={`tr-ec-${eIdx}`} className="bg-indigo-50/40 hover:bg-indigo-50 transition-colors">
+                              <td className="py-2 px-2 text-center font-bold text-slate-600 border-r border-slate-300">{rowIdx + 1}</td>
+                              <td className="py-2 px-3 font-bold text-indigo-950 border-r border-slate-300">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="select-all">{ec.description}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyText(ec.description, `ec-desc-${eIdx}`)}
+                                    className="no-print shrink-0 px-2 py-0.5 rounded text-[10px] font-bold border bg-white hover:bg-slate-100 text-indigo-700 border-slate-300"
+                                  >
+                                    {copiedKey === `ec-desc-${eIdx}` ? '✓ Kopyalandı' : 'Açıklamayı Kopyala'}
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="py-2 px-2.5 text-right font-extrabold text-black border-r border-slate-300">{adet} ADET</td>
+                              <td className="py-2 px-2.5 text-right font-semibold text-black border-r border-slate-300 whitespace-nowrap">{fiyatFormatted} {getSymbol(currency)}</td>
+                              <td className="py-2 px-2.5 text-right font-extrabold text-[#a80000] border-r border-slate-300 whitespace-nowrap">{tutarFormatted} {getSymbol(currency)}</td>
+                              <td className="py-2 px-2 text-center no-print">
+                                <button
+                                  type="button"
+                                  onClick={() => copyText(`${ec.description}\t${adet}\t${fiyatFormatted}\t${tutarFormatted}`, `ec-row-${eIdx}`)}
+                                  className="px-2.5 py-1 rounded text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-white"
+                                >
+                                  {copiedKey === `ec-row-${eIdx}` ? '✓ Satır' : 'Satırı Kopyala'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                       <tfoot className="bg-slate-900 text-white font-extrabold text-xs">
                         <tr>
@@ -4464,7 +4810,7 @@
                           </td>
                           <td className="py-2.5 px-2.5 border-r border-slate-700"></td>
                           <td className="py-2.5 px-2.5 text-right text-emerald-400 border-r border-slate-700 whitespace-nowrap">
-                            {totals?.totalTutar?.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {getSymbol(currency)}
+                            {finalInvoiceAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {getSymbol(currency)}
                           </td>
                           <td className="no-print"></td>
                         </tr>
@@ -4562,6 +4908,13 @@
                     <p className="text-black mt-1">
                       <strong>Kalem:</strong> {items.length} | <strong>Palet:</strong> {totals?.paletCount || 0} Palet | <strong>Brüt:</strong> {totals?.totalBrutKg ? totals.totalBrutKg.toLocaleString('tr-TR') : 0} KG
                     </p>
+                    {(checklist?.shipmentNo || checklist?.bookingNo || checklist?.containerNo) && (
+                      <div className="mt-1 pt-1 border-t border-slate-200 flex flex-wrap gap-2 text-[9.5px]">
+                        {checklist?.shipmentNo && <span className="font-black text-[#a80000]">{checklist.shipmentNo}</span>}
+                        {checklist?.bookingNo && <span className="font-bold text-black">{checklist.bookingNo}</span>}
+                        {checklist?.containerNo && <span className="font-extrabold text-[#0047b3]">📦 {checklist.containerNo}</span>}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -4610,9 +4963,9 @@
                           <tr key={idx} className={`${rowBg} border-b border-slate-300`}>
                             <td className={`border-r border-slate-300 ${cellPad} text-center font-medium`}>{item.siraNo || idx + 1}</td>
                             <td className={`border-r border-slate-300 ${cellPad} font-bold text-[#003d99] whitespace-nowrap`}>{item.adsIsNo || '-'}</td>
-                            <td className={`border-r border-slate-300 ${cellPad} font-bold text-black truncate`}>{item.parcaAdi || '-'}</td>
-                            <td className={`border-r border-slate-300 ${cellPad} font-mono text-slate-900 truncate`}>{item.sipRefNo || '-'}</td>
-                            <td className={`border-r border-slate-300 ${cellPad} text-slate-900 whitespace-nowrap`}>
+                            <td className={`border-r border-slate-300 ${cellPad} font-bold text-black break-words leading-tight`}>{item.parcaAdi || '-'}</td>
+                            <td className={`border-r border-slate-300 ${cellPad} font-mono text-slate-900 break-words leading-tight ${String(item.sipRefNo || '').length > 16 ? 'text-[8.5px] tracking-tighter' : ''}`}>{item.sipRefNo || '-'}</td>
+                            <td className={`border-r border-slate-300 ${cellPad} text-slate-900 break-words leading-tight`}>
                               {[item.posNo, cleanDrawingNo(item.resimNo)].filter(Boolean).join(' / ') || '-'}
                             </td>
                             <td className={`border-r border-slate-300 ${cellPad} text-right font-extrabold text-black`}>{item.adet || '-'}</td>
@@ -4670,7 +5023,7 @@
                 </div>
               </div>
 
-              {/* ALT 3 YETKİLİ KUTUSU (SON İŞLEM ŞEFİ, ÜRETİM KOORD., KALİTE MÜD.) */}
+              {/* ALT 3 YETKİLİ KUTUSU */}
               <div className="grid grid-cols-3 gap-5 text-[10px] text-center pt-1 relative">
                 <div className="border border-slate-300 rounded-xl bg-white overflow-hidden min-h-[82px] flex flex-col justify-between">
                   <div className="bg-[#eef2f7] border-b border-slate-300 py-1 px-2">
