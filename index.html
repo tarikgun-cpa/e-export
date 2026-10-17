@@ -2175,158 +2175,156 @@
           </div>
 
           {/* KURUMSAL KOMPAKT ERP VERİ GİRİŞ PANELİ */}
-          <div className="bg-white border-b border-slate-200 px-5 py-3 shrink-0 shadow-sm space-y-2.5">
+          <div className="bg-white border-b border-slate-200 px-5 py-2.5 shrink-0 shadow-sm space-y-2">
             
-            {/* 1. SATIR: TEMEL FATURA, TARİH, DÖVİZ, MÜŞTERİ, NAKLİYECİ (12 Sütunlu Kompakt Grid) */}
-            <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-2.5 items-end">
-              <div className="lg:col-span-2">
+            {/* 1. SATIR: FATURA NO (KISA), TARİHLER (KISA), DÖVİZ, MÜŞTERİ, NAKLİYECİ, BANKA, SİGORTA */}
+            <div className="flex flex-wrap lg:flex-nowrap items-end gap-2">
+              <div className="w-36 shrink-0">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Fatura No *</label>
-                <input type="text" className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md outline-none text-xs font-extrabold text-blue-900 focus:border-blue-600 bg-slate-50/50 focus:bg-white" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="ADS2026..." />
+                <input type="text" className="w-full px-2 py-1 border border-slate-300 rounded-md outline-none text-xs font-extrabold text-blue-900 focus:border-blue-600 bg-slate-50/50 focus:bg-white" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="ADS2026..." />
               </div>
-              <div className="lg:col-span-2">
+              <div className="w-32 shrink-0">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Fatura Tarihi</label>
-                <input type="date" className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs font-semibold bg-white focus:border-blue-600" value={checklistDate} onChange={e => setChecklistDate(e.target.value)} />
+                <input type="date" className="w-full px-1.5 py-1 border border-slate-300 rounded-md outline-none text-xs font-semibold bg-white focus:border-blue-600" value={checklistDate} onChange={e => setChecklistDate(e.target.value)} />
               </div>
-              <div className="lg:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Teslim Tarihi (Delivery)</label>
-                <input type="date" className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs font-semibold bg-white focus:border-blue-600" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
+              <div className="w-32 shrink-0">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Teslim Tarihi</label>
+                <input type="date" className="w-full px-1.5 py-1 border border-slate-300 rounded-md outline-none text-xs font-semibold bg-white focus:border-blue-600" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
               </div>
-              <div className="lg:col-span-1">
+              <div className="w-20 shrink-0">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Döviz</label>
-                <select className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs bg-white font-extrabold text-slate-800 focus:border-blue-600" value={currency} onChange={e => setCurrency(e.target.value)}>
+                <select className="w-full px-1.5 py-1 border border-slate-300 rounded-md outline-none text-xs bg-white font-extrabold text-slate-800 focus:border-blue-600" value={currency} onChange={e => setCurrency(e.target.value)}>
                   <option value="EUR">EUR (€)</option><option value="USD">USD ($)</option><option value="TRY">TRY (₺)</option><option value="GBP">GBP (£)</option>
                 </select>
               </div>
-              <div className="lg:col-span-3">
+              <div className="flex-1 min-w-[170px]">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Müşteri (Consignee) *</label>
-                <select className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md outline-none text-xs font-bold text-slate-800 bg-white focus:border-blue-600" value={customerId} onChange={e => setCustomerId(e.target.value)}>
+                <select className="w-full px-2 py-1 border border-slate-300 rounded-md outline-none text-xs font-bold text-slate-800 bg-white focus:border-blue-600" value={customerId} onChange={e => setCustomerId(e.target.value)}>
                   <option value="">-- Müşteri Seçin --</option>
                   {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
-              <div className="lg:col-span-2">
+              <div className="flex-1 min-w-[150px]">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Nakliyeci (Carrier)</label>
-                <select className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md outline-none text-xs font-semibold text-slate-800 bg-white focus:border-blue-600" value={transporterId} onChange={e => setTransporterId(e.target.value)}>
+                <select className="w-full px-2 py-1 border border-slate-300 rounded-md outline-none text-xs font-semibold text-slate-800 bg-white focus:border-blue-600" value={transporterId} onChange={e => setTransporterId(e.target.value)}>
                   <option value="">-- Nakliyeci Seçin --</option>
                   {transporters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
-            </div>
-
-            {/* 2. SATIR: BANKA, SİGORTA, KONTEYNER TAKİP, TR TANIM, SEVK ADRESİ & ÖZEL NOT */}
-            <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-2.5 items-end">
-              <div className="lg:col-span-2">
+              <div className="w-44 shrink-0">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Banka Hesabı</label>
-                <select className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs bg-white" value={selectedBankId} onChange={e => setSelectedBankId(e.target.value)}>
+                <select className="w-full px-2 py-1 border border-slate-300 rounded-md outline-none text-xs bg-white" value={selectedBankId} onChange={e => setSelectedBankId(e.target.value)}>
                   <option value="">-- Otomatik ({currency}) --</option>
                   {exporter?.banks?.map(b => <option key={b.id} value={b.id}>{b.bankName} ({b.currency})</option>)}
                 </select>
               </div>
-              <div className="lg:col-span-2">
+              <div className="w-44 shrink-0">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Sigorta Acentesi</label>
-                <select className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs bg-white" value={selectedInsuranceId} onChange={e => setSelectedInsuranceId(e.target.value)}>
+                <select className="w-full px-2 py-1 border border-slate-300 rounded-md outline-none text-xs bg-white" value={selectedInsuranceId} onChange={e => setSelectedInsuranceId(e.target.value)}>
                   <option value="">-- Acente Seçin --</option>
                   {exporter?.insurances?.map(i => <option key={i.id} value={i.id}>{i.agencyName}</option>)}
                 </select>
               </div>
-              <div className="lg:col-span-1">
-                <label className="block text-[10px] font-bold text-red-700 uppercase tracking-wider mb-0.5">Shipment No</label>
-                <input type="text" className="w-full px-2 py-1.5 border border-red-200 rounded-md outline-none text-xs font-bold text-red-800 bg-red-50/40 focus:bg-white" value={shipmentNo} onChange={e => setShipmentNo(e.target.value)} placeholder="Örn: 23" />
+            </div>
+
+            {/* 2. SATIR: SHIPMENT (KISA), BOOKING, CONTAINER, TR TANIM, SEVK ADRESİ (UZUN) & NAKLİYE NOTU (UZUN) */}
+            <div className="flex flex-wrap lg:flex-nowrap items-end gap-2">
+              <div className="w-20 shrink-0">
+                <label className="block text-[10px] font-bold text-red-700 uppercase tracking-wider mb-0.5">Shipment</label>
+                <input type="text" className="w-full px-2 py-1 border border-red-200 rounded-md outline-none text-xs font-bold text-red-800 text-center bg-red-50/40 focus:bg-white" value={shipmentNo} onChange={e => setShipmentNo(e.target.value)} placeholder="23" />
               </div>
-              <div className="lg:col-span-2">
+              <div className="w-36 shrink-0">
                 <label className="block text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-0.5">Booking No</label>
-                <input type="text" className="w-full px-2 py-1.5 border border-blue-200 rounded-md outline-none text-xs font-bold text-blue-900 bg-blue-50/40 focus:bg-white" value={bookingNo} onChange={e => setBookingNo(e.target.value)} placeholder="ZIMUIST..." />
+                <input type="text" className="w-full px-2 py-1 border border-blue-200 rounded-md outline-none text-xs font-bold text-blue-900 bg-blue-50/40 focus:bg-white" value={bookingNo} onChange={e => setBookingNo(e.target.value)} placeholder="ZIMUIST..." />
               </div>
-              <div className="lg:col-span-2">
+              <div className="w-36 shrink-0">
                 <label className="block text-[10px] font-bold text-sky-800 uppercase tracking-wider mb-0.5">📦 Container No</label>
-                <input type="text" className="w-full px-2 py-1.5 border border-sky-200 rounded-md outline-none text-xs font-bold text-sky-900 bg-sky-50/40 focus:bg-white" value={containerNo} onChange={e => setContainerNo(e.target.value)} placeholder="JXLU..." />
+                <input type="text" className="w-full px-2 py-1 border border-sky-200 rounded-md outline-none text-xs font-bold text-sky-900 bg-sky-50/40 focus:bg-white" value={containerNo} onChange={e => setContainerNo(e.target.value)} placeholder="JXLU..." />
               </div>
-              <div className="lg:col-span-1">
+              <div className="w-32 shrink-0">
                 <label className="block text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-0.5" title="GİB TR e-Fatura Satır Başlığı">TR Gümrük Tanımı</label>
-                <input type="text" className="w-full px-2 py-1.5 border border-indigo-200 rounded-md outline-none text-xs font-bold text-indigo-900 bg-indigo-50/40 focus:bg-white" value={customsDescriptionTR} onChange={e => setCustomsDescriptionTR(e.target.value)} placeholder="Yatak / Boru" />
+                <input type="text" className="w-full px-2 py-1 border border-indigo-200 rounded-md outline-none text-xs font-bold text-indigo-900 bg-indigo-50/40 focus:bg-white" value={customsDescriptionTR} onChange={e => setCustomsDescriptionTR(e.target.value)} placeholder="Yatak / Boru" />
               </div>
-              <div className="lg:col-span-1">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Sevk Adresi</label>
-                <input type="text" className="w-full px-2 py-1.5 border border-slate-300 rounded-md outline-none text-xs" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Farklı adres..." />
+              <div className="flex-1 min-w-[220px]">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Sevk Adresi (Delivery Address)</label>
+                <input type="text" className="w-full px-2.5 py-1 border border-slate-300 rounded-md outline-none text-xs focus:border-blue-600" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Müşteri adresinden farklıysa sevk adresini buraya yazın..." />
               </div>
-              <div className="lg:col-span-1">
-                <label className="block text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-0.5">📌 Nakliye Notu</label>
-                <input type="text" className="w-full px-2 py-1.5 border border-amber-300 rounded-md outline-none text-xs font-semibold text-amber-950 bg-amber-50/40 focus:bg-white" value={specialNote} onChange={e => setSpecialNote(e.target.value)} placeholder="Customs support..." />
+              <div className="flex-1 min-w-[220px]">
+                <label className="block text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-0.5">📌 Nakliye Özel Notu / Uyarısı</label>
+                <input type="text" className="w-full px-2.5 py-1 border border-amber-300 rounded-md outline-none text-xs font-semibold text-amber-950 bg-amber-50/40 focus:bg-white" value={specialNote} onChange={e => setSpecialNote(e.target.value)} placeholder="Örn: Customs support Marketing 19 6921 RE Duiven..." />
               </div>
             </div>
 
-            {/* 3. SATIR: VERGİ / PEŞİNAT / EK MALİYETLER & TABLO AKSİYON BARI (Tek Kompakt Şerit) */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-200">
-              {/* Sol: Satır Ekle, Şablon, Excel ve Ek Maliyet Kısayolları */}
+            {/* 3. SATIR: BUTONLAR, EK MALİYET KISAYOLLARI VE ABD DUTY / PEŞİNAT AYNI HİZADA YAN YANA */}
+            <div className="flex flex-wrap xl:flex-nowrap items-center justify-between gap-2 pt-1.5 border-t border-slate-200">
               <div className="flex flex-wrap items-center gap-1.5">
-                <button type="button" onClick={handleAddRow} className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-md text-xs font-bold flex items-center shadow-sm">
-                  <Plus size={14} className="mr-1" /> Satır Ekle
+                <button type="button" onClick={handleAddRow} className="bg-slate-800 hover:bg-slate-900 text-white px-2.5 py-1 rounded-md text-xs font-bold flex items-center shadow-sm whitespace-nowrap">
+                  <Plus size={13} className="mr-1" /> Satır Ekle
                 </button>
                 <div className="relative inline-block">
                   <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} disabled={isExcelLoading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                  <button type="button" className={`px-3 py-1.5 text-white rounded-md text-xs font-bold flex items-center shadow-sm ${isExcelLoading ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
-                    {isExcelLoading ? <Loader2 className="mr-1 w-3.5 h-3.5" /> : <Upload size={14} className="mr-1" />}
+                  <button type="button" className={`px-2.5 py-1 text-white rounded-md text-xs font-bold flex items-center shadow-sm whitespace-nowrap ${isExcelLoading ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                    {isExcelLoading ? <Loader2 className="mr-1 w-3.5 h-3.5" /> : <Upload size={13} className="mr-1" />}
                     {isExcelLoading ? 'Yükleniyor...' : 'Excel Yükle'}
                   </button>
                 </div>
-                <button type="button" onClick={handleDownloadTemplate} className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-2.5 py-1.5 rounded-md text-[11px] font-semibold flex items-center">
-                  <Download size={13} className="mr-1" /> Şablon
+                <button type="button" onClick={handleDownloadTemplate} className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-2 py-1 rounded-md text-[11px] font-semibold flex items-center whitespace-nowrap">
+                  <Download size={12} className="mr-1" /> Şablon
                 </button>
 
-                <span className="text-slate-300 mx-0.5">|</span>
+                <span className="text-slate-300">|</span>
 
-                <span className="text-[11px] font-extrabold text-indigo-900">Ek Maliyet:</span>
-                <button type="button" onClick={() => handleAddExtraCharge('Freight')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold">+ Freight</button>
-                <button type="button" onClick={() => handleAddExtraCharge('Pattern Cost')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold">+ Pattern</button>
-                <button type="button" onClick={() => handleAddExtraCharge('Machining Cost')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold">+ Machining</button>
-                <button type="button" onClick={() => handleAddExtraCharge('Quality Control Costs')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-1 rounded text-[11px] font-bold">+ Quality</button>
-              </div>
-
-              {/* Sağ: ABD Duty Fee, Down Payment, Bedelsiz ve Sayfalama */}
-              <div className="flex flex-wrap items-center gap-2.5 bg-slate-50 px-3 py-1 rounded-md border border-slate-200 text-xs">
-                <label className="flex items-center gap-1 font-bold text-rose-700 cursor-pointer" title="Sadece Malzeme Toplamından Hesaplanır">
-                  <input type="checkbox" checked={hasDutyFee} onChange={e => setHasDutyFee(e.target.checked)} className="w-3.5 h-3.5 accent-rose-600" />
-                  ABD Duty
-                </label>
-                {hasDutyFee && (
-                  <div className="flex items-center gap-1">
-                    <input type="number" step="0.01" value={dutyFeeRate} onChange={e => setDutyFeeRate(e.target.value)} className="w-12 px-1 py-0.5 border border-rose-300 rounded text-[11px] font-black text-rose-700 text-center bg-white" />
-                    <span className="text-[10px] font-bold text-rose-700">%</span>
-                    <input type="text" value={dutyFeeLabel} onChange={e => setDutyFeeLabel(e.target.value)} placeholder={`RECIP TR ${String(dutyFeeRate).replace('.', ',')} % DUTY`} className="w-36 px-1.5 py-0.5 border border-rose-200 rounded text-[11px] font-bold text-rose-900 bg-white" />
-                  </div>
-                )}
+                <span className="text-[11px] font-extrabold text-indigo-900 whitespace-nowrap">Ek Maliyet:</span>
+                <button type="button" onClick={() => handleAddExtraCharge('Freight')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap">+ Freight</button>
+                <button type="button" onClick={() => handleAddExtraCharge('Pattern Cost')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap">+ Pattern</button>
+                <button type="button" onClick={() => handleAddExtraCharge('Machining Cost')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap">+ Machining</button>
+                <button type="button" onClick={() => handleAddExtraCharge('Quality Control Costs')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-0.5 rounded text-[11px] font-bold whitespace-nowrap">+ Quality</button>
 
                 <span className="text-slate-300">|</span>
 
-                <label className="flex items-center gap-1 font-bold text-slate-700 cursor-pointer">
-                  <input type="checkbox" checked={hasDownPayment} onChange={e => setHasDownPayment(e.target.checked)} className="w-3.5 h-3.5 accent-red-600" />
-                  Peşinat
-                </label>
-                {hasDownPayment && (
-                  <div className="flex items-center gap-0.5">
-                    <input type="number" min="0" max="100" value={downPaymentRate} onChange={e => setDownPaymentRate(e.target.value)} className="w-12 px-1 py-0.5 border rounded text-[11px] font-bold text-red-600 text-center bg-white" />
-                    <span className="text-[10px] font-bold text-slate-500">%</span>
-                  </div>
-                )}
-
-                <span className="text-slate-300">|</span>
-
-                <label className="flex items-center gap-1 font-bold text-slate-700 cursor-pointer">
-                  <input type="checkbox" checked={isFreeOfCharge} onChange={e => setIsFreeOfCharge(e.target.checked)} className="w-3.5 h-3.5 accent-blue-600" />
-                  Bedelsiz
-                </label>
-
-                {items.length > 0 && (
-                  <>
-                    <span className="text-slate-300">|</span>
-                    <div className="flex items-center gap-1 text-[11px]">
-                      <button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="disabled:opacity-40 font-bold px-1.5 bg-white border rounded">&lt;</button>
-                      <span className="font-bold text-blue-700">{currentPage}/{totalPages}</span>
-                      <button type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="disabled:opacity-40 font-bold px-1.5 bg-white border rounded">&gt;</button>
+                {/* ABD Duty, Peşinat ve Bedelsiz Aynı Satırda Yan Yana */}
+                <div className="flex flex-wrap items-center gap-2 bg-slate-50 px-2.5 py-0.5 rounded-md border border-slate-200 text-xs">
+                  <label className="flex items-center gap-1 font-bold text-rose-700 cursor-pointer whitespace-nowrap" title="Sadece Malzeme Toplamından Hesaplanır">
+                    <input type="checkbox" checked={hasDutyFee} onChange={e => setHasDutyFee(e.target.checked)} className="w-3.5 h-3.5 accent-rose-600" />
+                    ABD Duty
+                  </label>
+                  {hasDutyFee && (
+                    <div className="flex items-center gap-1">
+                      <input type="number" step="0.01" value={dutyFeeRate} onChange={e => setDutyFeeRate(e.target.value)} className="w-11 px-1 py-0.5 border border-rose-300 rounded text-[11px] font-black text-rose-700 text-center bg-white" />
+                      <span className="text-[10px] font-bold text-rose-700">%</span>
+                      <input type="text" value={dutyFeeLabel} onChange={e => setDutyFeeLabel(e.target.value)} placeholder={`RECIP TR ${String(dutyFeeRate).replace('.', ',')} % DUTY`} className="w-32 px-1.5 py-0.5 border border-rose-200 rounded text-[11px] font-bold text-rose-900 bg-white" />
                     </div>
-                  </>
-                )}
+                  )}
+
+                  <span className="text-slate-300">|</span>
+
+                  <label className="flex items-center gap-1 font-bold text-slate-700 cursor-pointer whitespace-nowrap">
+                    <input type="checkbox" checked={hasDownPayment} onChange={e => setHasDownPayment(e.target.checked)} className="w-3.5 h-3.5 accent-red-600" />
+                    Peşinat
+                  </label>
+                  {hasDownPayment && (
+                    <div className="flex items-center gap-0.5">
+                      <input type="number" min="0" max="100" value={downPaymentRate} onChange={e => setDownPaymentRate(e.target.value)} className="w-11 px-1 py-0.5 border rounded text-[11px] font-bold text-red-600 text-center bg-white" />
+                      <span className="text-[10px] font-bold text-slate-500">%</span>
+                    </div>
+                  )}
+
+                  <span className="text-slate-300">|</span>
+
+                  <label className="flex items-center gap-1 font-bold text-slate-700 cursor-pointer whitespace-nowrap">
+                    <input type="checkbox" checked={isFreeOfCharge} onChange={e => setIsFreeOfCharge(e.target.checked)} className="w-3.5 h-3.5 accent-blue-600" />
+                    Bedelsiz
+                  </label>
+                </div>
               </div>
+
+              {items.length > 0 && (
+                <div className="flex items-center gap-1 text-[11px] bg-slate-100 px-2 py-0.5 rounded border border-slate-200 shrink-0">
+                  <button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="disabled:opacity-40 font-bold px-1.5 bg-white border rounded">&lt;</button>
+                  <span className="font-bold text-blue-700 px-1">{currentPage}/{totalPages}</span>
+                  <button type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="disabled:opacity-40 font-bold px-1.5 bg-white border rounded">&gt;</button>
+                </div>
+              )}
             </div>
 
             {/* EK MALİYET SATIRLARI VARSA KOMPAKT LİSTE */}
@@ -3374,7 +3372,7 @@
                 )}
 
                 <button type="button" onClick={() => window.print()} className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-1.5 rounded-lg font-bold flex items-center shadow-md text-sm">
-                  <Printer size={16} className="mr-1.5" /> Yazdır (A4)
+                  <Printer size={16} className="mr-1.5" /> Yazdır
                 </button>
                 <button type="button" onClick={onClose} className="bg-slate-300 text-slate-700 hover:bg-slate-400 px-4 py-1.5 rounded-lg font-medium text-sm">
                   Kapat
@@ -3563,7 +3561,7 @@
                   <div className="flex flex-wrap items-center gap-2 bg-white px-2.5 py-1 rounded-lg border border-slate-300 shadow-sm text-[11px]">
                     <div className="flex items-center gap-1">
                       <span className="font-bold text-red-700">Shipment:</span>
-                      <input type="text" value={shipmentNo} onChange={e => setShipmentNo(e.target.value)} placeholder="Shipment No. 23" className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px] font-bold text-red-700 w-28 outline-none" />
+                      <input type="text" value={shipmentNo} onChange={e => setShipmentNo(e.target.value)} placeholder="23" className="border border-slate-300 rounded px-1 py-0.5 text-[11px] font-bold text-red-700 w-12 text-center outline-none" />
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="font-bold text-blue-800">Booking:</span>
@@ -3624,7 +3622,7 @@
                     </label>
                   )}
                   <button type="button" onClick={() => window.print()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg font-bold flex items-center shadow-md transition-colors text-xs">
-                    <Printer size={15} className="mr-1" /> Yazdır (A4)
+                    <Printer size={15} className="mr-1" /> Yazdır
                   </button>
                   <button type="button" onClick={onClose} className="bg-slate-300 text-slate-700 hover:bg-slate-400 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors">Kapat</button>
                 </div>
@@ -5071,7 +5069,7 @@
               </div>
               <div className="flex gap-2">
                 <button type="button" onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-bold flex items-center shadow-md">
-                  <Printer size={18} className="mr-2" /> Yazdır (A4 Yatay)
+                  <Printer size={18} className="mr-2" /> Yazdır
                 </button>
                 <button type="button" onClick={onClose} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium">Kapat</button>
               </div>
