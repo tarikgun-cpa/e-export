@@ -1236,19 +1236,19 @@
       const [vatNo, setVatNo] = useState('');
       const [htsNo, setHtsNo] = useState('');
       const [logo, setLogo] = useState('');
-      const [contacts, setContacts] = useState([{ id: generateId(), name: '', email: '' }]);
+      const [contacts, setContacts] = useState([{ id: generateId(), name: '', email: '', phone: '' }]);
 
       const resetForm = () => {
         setEditingId(null);
         setName(''); setAddress(''); setCountry(''); setVatNo(''); setHtsNo(''); setLogo('');
-        setContacts([{ id: generateId(), name: '', email: '' }]);
+        setContacts([{ id: generateId(), name: '', email: '', phone: '' }]);
         setIsFormOpen(false);
       };
 
       const openNewForm = () => {
         setEditingId(null);
         setName(''); setAddress(''); setCountry(''); setVatNo(''); setHtsNo(''); setLogo('');
-        setContacts([{ id: generateId(), name: '', email: '' }]);
+        setContacts([{ id: generateId(), name: '', email: '', phone: '' }]);
         setIsFormOpen(true);
       };
 
@@ -1256,7 +1256,7 @@
         setEditingId(item.id);
         setName(item.name || ''); setAddress(item.address || ''); setCountry(item.country || '');
         setVatNo(item.vatNo || ''); setHtsNo(item.htsNo || ''); setLogo(item.logo || '');
-        setContacts(item.contacts && item.contacts.length > 0 ? item.contacts : [{ id: generateId(), name: '', email: '' }]);
+        setContacts(item.contacts && item.contacts.length > 0 ? item.contacts.map(c => ({ phone: '', ...c })) : [{ id: generateId(), name: '', email: '', phone: '' }]);
         setIsFormOpen(true);
       };
 
@@ -1280,7 +1280,7 @@
           vatNo: vatNo.trim(),
           htsNo: htsNo.trim(),
           logo,
-          contacts: contacts.filter(c => c.name.trim() || c.email.trim())
+          contacts: contacts.filter(c => (c.name && c.name.trim()) || (c.email && c.email.trim()) || (c.phone && c.phone.trim()))
         });
         resetForm();
       };
@@ -1350,14 +1350,15 @@
                   </div>
                   <div className="border-t pt-3">
                     <div className="flex justify-between items-center mb-2">
-                      <label className="text-xs font-bold text-slate-700">YETKİLİ KİŞİLER</label>
-                      <button type="button" onClick={() => setContacts([...contacts, { id: generateId(), name: '', email: '' }])} className="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded flex items-center font-semibold"><Plus size={14} className="mr-1" /> Ekle</button>
+                      <label className="text-xs font-bold text-slate-700">YETKİLİ KİŞİLER (Telefon No sadece Nakliye Talimatında görünür)</label>
+                      <button type="button" onClick={() => setContacts([...contacts, { id: generateId(), name: '', email: '', phone: '' }])} className="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded flex items-center font-semibold"><Plus size={14} className="mr-1" /> Ekle</button>
                     </div>
                     <div className="max-h-40 overflow-y-auto pr-1">
                       {contacts.map((c) => (
                         <div key={c.id} className="flex gap-2 mb-2 items-center">
-                          <input type="text" placeholder="Ad Soyad" className="flex-1 px-3 py-1.5 border rounded text-sm outline-none" value={c.name} onChange={e => setContacts(contacts.map(item => item.id === c.id ? { ...item, name: e.target.value } : item))} />
-                          <input type="email" placeholder="Mail" className="flex-1 px-3 py-1.5 border rounded text-sm outline-none" value={c.email} onChange={e => setContacts(contacts.map(item => item.id === c.id ? { ...item, email: e.target.value } : item))} />
+                          <input type="text" placeholder="Ad Soyad" className="flex-1 px-3 py-1.5 border rounded text-sm outline-none" value={c.name || ''} onChange={e => setContacts(contacts.map(item => item.id === c.id ? { ...item, name: e.target.value } : item))} />
+                          <input type="email" placeholder="Mail" className="flex-1 px-3 py-1.5 border rounded text-sm outline-none" value={c.email || ''} onChange={e => setContacts(contacts.map(item => item.id === c.id ? { ...item, email: e.target.value } : item))} />
+                          <input type="text" placeholder="Telefon No" className="w-40 px-3 py-1.5 border rounded text-sm outline-none" value={c.phone || ''} onChange={e => setContacts(contacts.map(item => item.id === c.id ? { ...item, phone: e.target.value } : item))} />
                           {contacts.length > 1 && <button type="button" onClick={() => setContacts(contacts.filter(item => item.id !== c.id))} className="text-red-500 p-1"><Trash2 size={16} /></button>}
                         </div>
                       ))}
@@ -1574,6 +1575,19 @@
       const getCustomerName = (id) => customers.find(c => c.id === id)?.name || 'Bilinmiyor';
       const getTransporterName = (id) => transporters.find(t => t.id === id)?.name || '-';
 
+      // En yeni fatura tarihli kaydı en üstte sırala
+      const sortedData = useMemo(() => {
+        return [...data].sort((a, b) => {
+          const dateA = a.checklistDate ? new Date(a.checklistDate).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+          const dateB = b.checklistDate ? new Date(b.checklistDate).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+          if (dateB !== dateA) return dateB - dateA;
+          const createdA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const createdB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          if (createdB !== createdA) return createdB - createdA;
+          return String(b.invoiceNumber || '').localeCompare(String(a.invoiceNumber || ''), undefined, { numeric: true });
+        });
+      }, [data]);
+
       return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
           <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
@@ -1593,14 +1607,17 @@
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 text-sm">
-                {data.length > 0 ? data.map(item => (
+                {sortedData.length > 0 ? sortedData.map(item => (
                   <tr key={item.id} className="hover:bg-slate-50">
                     <td className="p-4 font-bold text-blue-600">
                       {item.invoiceNumber}
-                      <div className="text-xs text-slate-400 font-normal">{item.checklistDate || new Date(item.createdAt).toLocaleDateString('tr-TR')}</div>
+                      <div className="text-xs text-slate-400 font-normal">{formatDateTR(item.checklistDate) || new Date(item.createdAt).toLocaleDateString('tr-TR')}</div>
                     </td>
                     <td className="p-4 text-slate-700">{getCustomerName(item.customerId)}</td>
-                    <td className="p-4 text-slate-700">{getTransporterName(item.transporterId)}</td>
+                    <td className="p-4 text-slate-700">
+                      {getTransporterName(item.transporterId)}
+                      {item.specialNote && <div className="text-[11px] text-amber-700 font-semibold truncate max-w-[200px]" title={item.specialNote}>📌 {item.specialNote}</div>}
+                    </td>
                     <td className="p-4 text-slate-700 font-bold">{item.currency || 'EUR'}</td>
                     <td className="p-4 text-slate-600"><span className="bg-slate-200 text-slate-700 py-1 px-3 rounded-full text-xs font-semibold">{item.items?.length || 0} Kalem</span></td>
                     <td className="p-4 text-center">
@@ -1630,7 +1647,8 @@
       const [deliveryAddress, setDeliveryAddress] = useState(initialData?.deliveryAddress || '');
       const [selectedBankId, setSelectedBankId] = useState(initialData?.selectedBankId || '');
       const [selectedInsuranceId, setSelectedInsuranceId] = useState(initialData?.selectedInsuranceId || '');
-      const [customsDescriptionTR, setCustomsDescriptionTR] = useState(initialData?.customsDescriptionTR || 'Çelik Dökümden Mamül Aşınır Parça');
+      const [customsDescriptionTR, setCustomsDescriptionTR] = useState(initialData?.customsDescriptionTR || 'Yatak');
+      const [specialNote, setSpecialNote] = useState(initialData?.specialNote || '');
       const [hasDownPayment, setHasDownPayment] = useState(initialData?.hasDownPayment || false);
       const [downPaymentRate, setDownPaymentRate] = useState(initialData?.downPaymentRate ?? 30);
       const [isFreeOfCharge, setIsFreeOfCharge] = useState(initialData?.isFreeOfCharge || false);
@@ -2033,6 +2051,7 @@
           selectedBankId,
           selectedInsuranceId,
           customsDescriptionTR: customsDescriptionTR.trim(),
+          specialNote: specialNote.trim(),
           hasDownPayment,
           downPaymentRate: Number(downPaymentRate) || 0,
           isFreeOfCharge,
@@ -2111,7 +2130,11 @@
                 <label className="block text-xs font-bold text-indigo-700 mb-1">MALIN TÜRKÇE GÜMRÜK TANIMI (TR e-FATURA)</label>
                 <input type="text" className="w-full px-3 py-1.5 border border-indigo-300 rounded-lg outline-none text-sm font-semibold text-indigo-900 bg-indigo-50/40 focus:bg-white" value={customsDescriptionTR} onChange={e => setCustomsDescriptionTR(e.target.value)} placeholder="Örn: Çelik Dökümden Mamül Aşınır Parça" />
               </div>
-              <div className="flex items-center gap-4 bg-white px-3 py-1.5 border rounded-lg md:col-span-2">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-amber-800 mb-1">📌 ÖZEL NOT / UYARI (NAKLİYE TALİMATINDA BELİRTİLİR)</label>
+                <input type="text" className="w-full px-3 py-1.5 border border-amber-300 rounded-lg outline-none text-sm font-semibold text-amber-950 bg-amber-50/40 focus:bg-white" value={specialNote} onChange={e => setSpecialNote(e.target.value)} placeholder="Örn: 📌 Customs support Marketing 19 6921 RE Duiven The Netherlands" />
+              </div>
+              <div className="flex items-center gap-4 bg-white px-3 py-1.5 border rounded-lg md:col-span-4">
                 <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
                   <input type="checkbox" checked={hasDownPayment} onChange={e => setHasDownPayment(e.target.checked)} className="w-4 h-4 accent-red-600" />
                   Down Payment (Peşinat)
@@ -3105,7 +3128,8 @@
       const [isFreeOfCharge, setIsFreeOfCharge] = useState(checklist?.isFreeOfCharge || false);
       const [deliveryDate, setDeliveryDate] = useState(checklist?.deliveryDate || '');
       const [customDeliveryAddress, setCustomDeliveryAddress] = useState(checklist?.deliveryAddress || '');
-      const [customsDescTR, setCustomsDescTR] = useState(checklist?.customsDescriptionTR || 'Çelik Dökümden Mamül Aşınır Parça');
+      const [customsDescTR, setCustomsDescTR] = useState(checklist?.customsDescriptionTR || 'Yatak');
+      const [specialNote, setSpecialNote] = useState(checklist?.specialNote || '');
       const [copiedKey, setCopiedKey] = useState(null);
 
       const copyText = (text, key) => {
@@ -3887,12 +3911,12 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 4. NAKLİYE TALİMATI (Invoice Tasarım Dilinde Oval Kartlar & Bordo Tablo) */}
+              {/* 4. NAKLİYE TALİMATI (Özel Not ve Yetkili Telefon No Dahil) */}
               {/* ========================================================================= */}
               {activeTab === 'transport' && (
                 <div className="bg-white p-7 mx-auto w-full shadow-lg text-sm font-medium text-black relative print-page flex flex-col justify-between border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
                   <div>
-                    <div className="flex justify-between items-center border-b border-slate-300 pb-4 mb-5">
+                    <div className="flex justify-between items-center border-b border-slate-300 pb-4 mb-4">
                       {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-w-[220px] object-contain" />}
                       <div className="text-right">
                         <p className="font-black text-base text-black">{exporter?.name}</p>
@@ -3903,16 +3927,16 @@
                       </div>
                     </div>
 
-                    <div className="mb-4 border border-slate-300 rounded-xl p-3.5 bg-[#eef2f7]/60">
+                    <div className="mb-3.5 border border-slate-300 rounded-xl p-3 bg-[#eef2f7]/60">
                       <div className="text-[10px] font-extrabold text-[#0047b3] uppercase tracking-wider mb-0.5">NAKLİYECİ FİRMA (CARRIER)</div>
                       <h2 className="text-base font-black text-black uppercase">{transporter?.name || 'NAKLİYECİ FİRMA'}</h2>
                       <p className="text-xs text-slate-800 mt-0.5">{transporter?.address}</p>
                     </div>
 
-                    <p className="mb-1.5 text-xs"><strong>Konu:</strong> {customer?.country || 'Yurtdışı'} tarafına sevk edilecek yükümüz hakkında.</p>
-                    <p className="mb-3.5 text-xs text-slate-700">Aşağıda detayları verilen yükümüzün teslimat adresine sevk edilmesini rica ederiz.</p>
+                    <p className="mb-1 text-xs"><strong>Konu:</strong> {customer?.country || 'Yurtdışı'} tarafına sevk edilecek yükümüz hakkında.</p>
+                    <p className="mb-3 text-xs text-slate-700">Aşağıda detayları verilen yükümüzün teslimat adresine sevk edilmesini rica ederiz.</p>
 
-                    <div className="border border-slate-300 rounded-xl overflow-hidden mb-4">
+                    <div className="border border-slate-300 rounded-xl overflow-hidden mb-3.5">
                       <table className="w-full border-collapse text-xs text-center" style={{tableLayout: 'fixed'}}>
                         <colgroup>
                           <col className="w-[46%]" />
@@ -3930,13 +3954,13 @@
                         </thead>
                         <tbody>
                           <tr className="bg-white border-b border-slate-300">
-                            <td className="border-r border-slate-300 p-3 text-left font-bold">
+                            <td className="border-r border-slate-300 p-2.5 text-left font-bold">
                               ÇELİK DÖKÜMDEN MAMÜL AŞINIR PARÇALAR<br/>
                               <span className="font-semibold text-[#0047b3]">{uniquePartNames}</span>
                             </td>
-                            <td className="border-r border-slate-300 p-3 font-extrabold">{totals?.paletCount} Palet</td>
-                            <td className="border-r border-slate-300 p-3 font-extrabold">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
-                            <td className="p-3 font-extrabold">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
+                            <td className="border-r border-slate-300 p-2.5 font-extrabold">{totals?.paletCount} Palet</td>
+                            <td className="border-r border-slate-300 p-2.5 font-extrabold">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
+                            <td className="p-2.5 font-extrabold">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
                           </tr>
                           <tr className="bg-[#eef2f7]">
                             <td colSpan={4} className="p-2 text-black text-left text-[11px]">
@@ -3947,7 +3971,7 @@
                       </table>
                     </div>
 
-                    <div className="grid grid-cols-[145px_12px_1fr] gap-y-3 text-xs border border-slate-300 rounded-xl p-4 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                    <div className="grid grid-cols-[145px_12px_1fr] gap-y-2.5 text-xs border border-slate-300 rounded-xl p-4 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
                       <div className="font-extrabold text-[#0047b3]">ALICI FİRMA</div><div className="font-bold">:</div>
                       <div className="font-bold text-black">
                         {customer?.name} <br/>
@@ -3960,8 +3984,16 @@
                       </div>
 
                       <div className="font-extrabold text-[#0047b3]">İLETİŞİM BİLGİSİ</div><div className="font-bold">:</div>
-                      <div className="font-semibold">
-                        {customer?.contacts?.map((c, i) => <span key={i}>{c.name} ({c.email})<br/></span>) || '-'}
+                      <div className="font-semibold space-y-0.5">
+                        {customer?.contacts && customer.contacts.length > 0 ? (
+                          customer.contacts.map((c, i) => (
+                            <div key={i}>
+                              <span className="font-bold text-black">{c.name}</span>
+                              {c.email ? ` (${c.email})` : ''}
+                              {c.phone ? <span className="text-[#0047b3] font-bold"> — Tel: {c.phone}</span> : ''}
+                            </div>
+                          ))
+                        ) : '-'}
                       </div>
 
                       <div className="font-extrabold text-[#0047b3]">TESLİM ŞEKLİ</div><div className="font-bold">:</div>
@@ -3971,17 +4003,27 @@
                       <div className="font-extrabold text-black">SAYGILI GÜMRÜK MÜŞAVİRLİĞİ LTD. ŞTİ.</div>
                     </div>
 
-                    <div className="mt-4 border border-slate-300 rounded-xl p-3.5 bg-[#eef2f7]/60 text-xs leading-relaxed">
+                    {/* ÖZEL NOT / UYARI KUTUSU (Varsa Gösterilir) */}
+                    {specialNote && specialNote.trim() !== '' && (
+                      <div className="mt-3 border-2 border-[#a80000] rounded-xl p-3 bg-rose-50/70 text-xs leading-snug">
+                        <span className="font-black text-[#a80000] uppercase tracking-wide mr-1.5">ÖZEL NOT / TALİMAT:</span>
+                        <span className="font-extrabold text-black whitespace-pre-line">
+                          {specialNote.trim().startsWith('📌') ? specialNote.trim() : `📌 ${specialNote.trim()}`}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="mt-3 border border-slate-300 rounded-xl p-3 bg-[#eef2f7]/60 text-xs leading-relaxed">
                       <p><strong className="text-[#003d99]">Konşimento:</strong> 1 asıl 2 suret olarak düzenlenecek konşimento üzerinde <strong>FREIGHT PREPAID</strong> ve <strong>CLEAN on TRUCK</strong>, ve CMR Belgesinin ekli evraklar kutucuğunda <em>ATR. 1 (original), packing list (copy), invoice (copy)</em> ibareleri yer alacak ve 1 asıl, 1 suret konşimento tarafımıza gönderilecektir.</p>
                     </div>
                   </div>
 
-                  <div className="mt-auto pt-3 flex justify-end pr-6 pb-2">
+                  <div className="mt-auto pt-2 flex justify-end pr-6 pb-1">
                     <div className="font-bold text-sm text-center flex flex-col items-center">
                       <p className="text-xs text-slate-700 uppercase">Saygılarımızla,</p>
                       <p className="mt-0.5 font-black text-black">{exporter?.name}</p>
-                      <div className="mt-1 flex justify-center items-center min-h-[100px] min-w-[210px]">
-                        <StampImage maxW="200px" maxH="95px" />
+                      <div className="mt-1 flex justify-center items-center min-h-[95px] min-w-[210px]">
+                        <StampImage maxW="200px" maxH="92px" />
                       </div>
                     </div>
                   </div>
