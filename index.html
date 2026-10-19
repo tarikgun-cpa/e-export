@@ -3250,15 +3250,13 @@
       const themeColor = color || '#a80000';
       return (
         <style>{`
-          .exporter-theme-scope .bg-\\[\\#a80000\\] { background-color: ${themeColor} !important; }
-          .exporter-theme-scope .text-\\[\\#a80000\\] { color: ${themeColor} !important; }
-          .exporter-theme-scope .border-\\[\\#a80000\\] { border-color: ${themeColor} !important; }
-          .exporter-theme-scope .bg-rose-50\\/40,
-          .exporter-theme-scope .bg-rose-50\\/60,
-          .exporter-theme-scope .bg-rose-50\\/70 {
+          .exporter-theme-scope [class*="bg-[#a80000]"] { background-color: ${themeColor} !important; }
+          .exporter-theme-scope [class*="text-[#a80000]"] { color: ${themeColor} !important; }
+          .exporter-theme-scope [class*="border-[#a80000]"] { border-color: ${themeColor} !important; }
+          .exporter-theme-scope [class*="bg-rose-50"] {
             background-color: color-mix(in srgb, ${themeColor} 8%, white) !important;
           }
-          .exporter-theme-scope .border-rose-300 {
+          .exporter-theme-scope [class*="border-rose-300"] {
             border-color: color-mix(in srgb, ${themeColor} 35%, white) !important;
           }
         `}</style>
@@ -3784,6 +3782,7 @@
       const [activeTab, setActiveTab] = useState('invoice');
       const [showStamp, setShowStamp] = useState(true);
       const [proformaDocTitle, setProformaDocTitle] = useState(checklist?.proformaDocTitle || 'PROFORMA INVOICE');
+      const [invoiceDocTitle, setInvoiceDocTitle] = useState(checklist?.invoiceDocTitle || 'INVOICE');
       const [hasDownPayment, setHasDownPayment] = useState(checklist?.hasDownPayment || false);
       const [downPaymentRate, setDownPaymentRate] = useState(checklist?.downPaymentRate ?? 30);
       const [isFreeOfCharge, setIsFreeOfCharge] = useState(checklist?.isFreeOfCharge || false);
@@ -3961,17 +3960,17 @@
                 
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex flex-wrap items-center gap-2 bg-white px-2.5 py-1 rounded-lg border border-slate-300 shadow-sm text-[11px]">
-                    {activeTab === 'proforma' && (
+                    {(activeTab === 'proforma' || activeTab === 'invoice') && (
                       <>
                         <div className="flex items-center gap-1">
-                          <span className="font-bold text-indigo-800">Başlık:</span>
+                          <span className="font-bold text-indigo-800">Fatura Başlığı:</span>
                           <select
-                            value={proformaDocTitle}
-                            onChange={e => setProformaDocTitle(e.target.value)}
+                            value={activeTab === 'proforma' ? proformaDocTitle : invoiceDocTitle}
+                            onChange={e => activeTab === 'proforma' ? setProformaDocTitle(e.target.value) : setInvoiceDocTitle(e.target.value)}
                             className="border border-indigo-300 rounded px-1.5 py-0.5 text-[11px] font-extrabold text-indigo-950 bg-indigo-50/60 outline-none cursor-pointer"
                           >
-                            <option value="PROFORMA INVOICE">Proforma Invoice</option>
                             <option value="INVOICE">Invoice</option>
+                            <option value="PROFORMA INVOICE">Proforma Invoice</option>
                             <option value="DOWN PAYMENT INVOICE">Down Payment Invoice</option>
                             <option value="COMMERCIAL INVOICE">Commercial Invoice</option>
                           </select>
@@ -4204,8 +4203,8 @@
                        <div className="w-[41%] relative flex flex-col justify-between">
                          <StampImage className="absolute -top-[68px] left-1/2 -translate-x-1/2 z-20" maxW="185px" maxH="82px" />
                          
-                         <div className="bg-[#a80000] text-white text-center font-black text-lg py-1.5 rounded-lg uppercase tracking-widest shadow-sm">
-                           INVOICE
+                         <div className="bg-[#a80000] text-white text-center font-black text-[15px] py-1.5 px-2 rounded-lg uppercase tracking-widest shadow-sm whitespace-nowrap">
+                           {invoiceDocTitle}
                          </div>
                          <div className="border border-slate-300 rounded-xl bg-white px-3.5 py-2 flex-1 flex flex-col justify-center mt-2">
                            <div className="text-[10px] font-bold divide-y divide-slate-200">
