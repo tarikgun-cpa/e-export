@@ -2802,9 +2802,9 @@
           <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
             <div>
               <h3 className="text-lg font-semibold text-slate-800 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-rose-600" /> Kayıtlı Proforma Faturalar (Sipariş & Avans)
+                <FileText className="w-5 h-5 mr-2 text-rose-600" /> Kayıtlı Proforma Faturalar (Malzeme & Hizmet)
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">Üretim başlamadan önce müşteriye gönderilen avans faturaları. Üretim bittiğinde tek tıkla Check List'e aktarabilirsiniz.</p>
+              <p className="text-xs text-slate-500 mt-0.5">Ürün/Malzeme veya Hizmet için oluşturulan proforma ve avans faturaları.</p>
             </div>
             <button type="button" onClick={onCreateNew} className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2 rounded-lg font-bold flex items-center shadow-sm text-sm transition-colors">
               <Plus size={18} className="mr-1.5" /> Yeni Proforma Fatura Oluştur
@@ -2815,6 +2815,7 @@
               <thead>
                 <tr className="bg-slate-100 text-slate-600 text-sm sticky top-0 shadow-sm">
                   <th className="p-4 font-semibold">Proforma No / Tarih</th>
+                  <th className="p-4 font-semibold">Tür</th>
                   <th className="p-4 font-semibold">Müşteri</th>
                   <th className="p-4 font-semibold">Toplam Tutar</th>
                   <th className="p-4 font-semibold">Avans Oranı & Tutarı</th>
@@ -2828,11 +2829,23 @@
                   const advRate = Number(item.advanceRate ?? 30);
                   const advAmount = (total * advRate) / 100;
                   const curr = item.currency || 'EUR';
+                  const isService = item.proformaType === 'service';
                   return (
                     <tr key={item.id} className="hover:bg-slate-50">
                       <td className="p-4 font-bold text-rose-700">
                         {item.proformaNumber}
                         <div className="text-xs text-slate-400 font-normal">{formatDateTR(item.proformaDate)}</div>
+                      </td>
+                      <td className="p-4">
+                        {isService ? (
+                          <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-300 px-2.5 py-0.5 rounded-full text-xs font-extrabold">
+                            🛠️ Hizmet
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-extrabold">
+                            📦 Malzeme
+                          </span>
+                        )}
                       </td>
                       <td className="p-4 text-slate-800 font-medium">{getCustomerName(item.customerId)}</td>
                       <td className="p-4 text-slate-800 font-bold">
@@ -2856,14 +2869,16 @@
                           >
                             <Printer size={14} className="mr-1" /> Proforma Yazdır
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => onConvertToChecklist(item)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-bold flex items-center shadow-sm"
-                            title="Üretim Bittiğinde Kalemleri ve Avansı Check List'e Aktar"
-                          >
-                            <ChevronRight size={14} className="mr-0.5" /> Çekliste Aktar
-                          </button>
+                          {!isService && (
+                            <button
+                              type="button"
+                              onClick={() => onConvertToChecklist(item)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-bold flex items-center shadow-sm"
+                              title="Üretim Bittiğinde Kalemleri ve Avansı Check List'e Aktar"
+                            >
+                              <ChevronRight size={14} className="mr-0.5" /> Çekliste Aktar
+                            </button>
+                          )}
                           <button type="button" onClick={() => onEdit(item)} className="text-blue-600 p-1" title="Düzenle"><Edit size={18} /></button>
                           <button type="button" onClick={() => onDelete(item.id)} className="text-red-500 p-1" title="Sil"><Trash2 size={16} /></button>
                         </div>
@@ -2872,7 +2887,7 @@
                   );
                 }) : (
                   <tr>
-                    <td colSpan={6} className="p-12 text-center text-slate-500 text-lg">
+                    <td colSpan={7} className="p-12 text-center text-slate-500 text-lg">
                       Henüz kayıtlı Proforma Fatura bulunmuyor. Sağ üstten yeni oluşturabilirsiniz.
                     </td>
                   </tr>
@@ -2885,6 +2900,8 @@
     }
 
     function ProformaForm({ exporter, customers, initialData, onBack, onSaveProforma }) {
+      const [proformaType, setProformaType] = useState(initialData?.proformaType || 'goods'); // 'goods' (Malzeme) | 'service' (Hizmet)
+      const [documentTitle, setDocumentTitle] = useState(initialData?.documentTitle || 'PROFORMA INVOICE');
       const [proformaNumber, setProformaNumber] = useState(initialData?.proformaNumber || '');
       const [proformaDate, setProformaDate] = useState(initialData?.proformaDate || new Date().toISOString().split('T')[0]);
       const [deliveryDate, setDeliveryDate] = useState(initialData?.deliveryDate || '');
@@ -2898,17 +2915,33 @@
       const [items, setItems] = useState(initialData?.items || []);
       const [isExcelLoading, setIsExcelLoading] = useState(false);
 
-      const columns = [
-        { key: 'siraNo', label: 'Sıra No', width: 'w-16' },
-        { key: 'sipRefNo', label: 'Order No (Sip. Ref)', width: 'w-36' },
-        { key: 'posNo', label: 'Pos No', width: 'w-20' },
-        { key: 'parcaAdi', label: 'Part Name (Parça Adı)', width: 'w-56' },
-        { key: 'resimNo', label: 'Drawing No (Resim No)', width: 'w-40' },
-        { key: 'adet', label: 'Quantity (Adet)', width: 'w-24' },
-        { key: 'fiyat', label: 'Unit Price (Birim Fiyat)', width: 'w-32' },
-        { key: 'tutar', label: 'Total (Toplam Tutar)', width: 'w-32' },
-        { key: 'netKg', label: 'Tahmini Net KG (Opsiyonel)', width: 'w-28' }
-      ];
+      const isService = proformaType === 'service';
+
+      const columns = useMemo(() => {
+        if (isService) {
+          return [
+            { key: 'siraNo', label: 'Sıra No', width: 'w-16' },
+            { key: 'sipRefNo', label: 'Order / Ref No', width: 'w-36' },
+            { key: 'posNo', label: 'Pos No', width: 'w-20' },
+            { key: 'parcaAdi', label: 'Service Description (Hizmet Açıklaması)', width: 'w-72' },
+            { key: 'resimNo', label: 'Drawing / Ref Code (Opsiyonel)', width: 'w-40' },
+            { key: 'adet', label: 'Quantity (Miktar)', width: 'w-24' },
+            { key: 'fiyat', label: 'Unit Price (Birim Fiyat)', width: 'w-32' },
+            { key: 'tutar', label: 'Total (Toplam Tutar)', width: 'w-32' }
+          ];
+        }
+        return [
+          { key: 'siraNo', label: 'Sıra No', width: 'w-16' },
+          { key: 'sipRefNo', label: 'Order No (Sip. Ref)', width: 'w-36' },
+          { key: 'posNo', label: 'Pos No', width: 'w-20' },
+          { key: 'parcaAdi', label: 'Part Name (Parça Adı)', width: 'w-56' },
+          { key: 'resimNo', label: 'Drawing No (Resim No)', width: 'w-40' },
+          { key: 'adet', label: 'Quantity (Adet)', width: 'w-24' },
+          { key: 'fiyat', label: 'Unit Price (Birim Fiyat)', width: 'w-32' },
+          { key: 'tutar', label: 'Total (Toplam Tutar)', width: 'w-32' },
+          { key: 'netKg', label: 'Tahmini Net KG (Opsiyonel)', width: 'w-28' }
+        ];
+      }, [isService]);
 
       const totals = useMemo(() => {
         let totalAdet = 0;
@@ -2936,7 +2969,7 @@
           posNo: '',
           parcaAdi: '',
           resimNo: '',
-          adet: '',
+          adet: 1,
           fiyat: '',
           tutar: '',
           netKg: ''
@@ -3036,12 +3069,14 @@
         }
         onSaveProforma({
           exporterId: exporter.id,
+          proformaType,
+          documentTitle,
           proformaNumber: proformaNumber.trim(),
           proformaDate,
           deliveryDate,
           customerId,
           currency,
-          deliveryTerm,
+          deliveryTerm: isService ? '' : deliveryTerm,
           deliveryAddress,
           selectedBankId,
           advanceRate: Number(advanceRate) || 0,
@@ -3054,29 +3089,66 @@
       return (
         <div className="flex flex-col h-full bg-white z-20 overflow-hidden">
           <div className="bg-rose-900 text-white p-4 flex justify-between items-center shadow-md shrink-0">
-            <div className="flex items-center">
-              <button type="button" onClick={onBack} className="mr-4 p-2 hover:bg-rose-800 rounded-full text-rose-200 hover:text-white">
-                <ArrowLeft size={24} />
+            <div className="flex items-center gap-4">
+              <button type="button" onClick={onBack} className="p-2 hover:bg-rose-800 rounded-full text-rose-200 hover:text-white">
+                <ArrowLeft size={22} />
               </button>
-              <h2 className="text-xl font-bold flex items-center">
-                <FileText className="mr-2 text-rose-300" /> {initialData ? 'Proforma Fatura Düzenle' : 'Yeni Proforma Fatura Oluştur (Sipariş & Avans)'}
+              <h2 className="text-lg font-bold flex items-center">
+                <FileText className="mr-2 text-rose-300" /> {initialData ? 'Proforma Fatura Düzenle' : 'Yeni Proforma Fatura Oluştur'}
               </h2>
+
+              {/* PROFORMA TÜRÜ SEÇİCİ (MALZEME / HİZMET) */}
+              <div className="flex items-center bg-rose-950/80 p-1 rounded-lg border border-rose-700 ml-2">
+                <button
+                  type="button"
+                  onClick={() => setProformaType('goods')}
+                  className={`px-3 py-1 rounded-md text-xs font-extrabold transition-all ${
+                    !isService ? 'bg-white text-rose-900 shadow-sm' : 'text-rose-200 hover:text-white'
+                  }`}
+                >
+                  📦 Malzeme / Ürün Proforması
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProformaType('service')}
+                  className={`px-3 py-1 rounded-md text-xs font-extrabold transition-all ${
+                    isService ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-rose-200 hover:text-white'
+                  }`}
+                >
+                  🛠️ Hizmet Proforması
+                </button>
+              </div>
             </div>
             <div className="text-rose-200 text-sm">İhracatçı: <span className="text-white font-bold">{exporter.name}</span></div>
           </div>
 
           <div className="p-4 border-b border-gray-200 bg-slate-50 shrink-0">
+            {isService && (
+              <div className="mb-3 bg-amber-50 border border-amber-300 text-amber-900 px-3.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between">
+                <span>🛠️ Hizmet Proforması Modu Aktif: Çıktıda "Delivery Term", "Origin: Türkiye TR", "Total Quantity" ve "AB 2023/1214 Demir-Çelik Beyanı" yer almaz.</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">PROFORMA NO *</label>
                 <input type="text" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm font-bold text-rose-700" value={proformaNumber} onChange={e => setProformaNumber(e.target.value)} placeholder="PI-2026-001" />
               </div>
               <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">FATURA BAŞLIĞI (GÖRSEL İSMİ)</label>
+                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white font-extrabold text-indigo-900" value={documentTitle} onChange={e => setDocumentTitle(e.target.value)}>
+                  <option value="PROFORMA INVOICE">Proforma Invoice</option>
+                  <option value="INVOICE">Invoice</option>
+                  <option value="DOWN PAYMENT INVOICE">Down Payment Invoice</option>
+                  <option value="COMMERCIAL INVOICE">Commercial Invoice</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">PROFORMA TARİHİ</label>
                 <input type="date" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={proformaDate} onChange={e => setProformaDate(e.target.value)} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">TAHMİNİ TESLİM TARİHİ</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{isService ? 'HİZMET / TAMAMLANMA TARİHİ' : 'TAHMİNİ TESLİM TARİHİ'}</label>
                 <input type="date" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
               </div>
               <div>
@@ -3092,12 +3164,14 @@
                   <option value="EUR">EUR (€)</option><option value="USD">USD ($)</option><option value="TRY">TRY (₺)</option><option value="GBP">GBP (£)</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">TESLİM ŞEKLİ (DELIVERY TERM)</label>
-                <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white font-bold" value={deliveryTerm} onChange={e => setDeliveryTerm(e.target.value)}>
-                  <option value="DAP">DAP</option><option value="CIF">CIF</option><option value="FOB">FOB</option><option value="EXW">EXW</option><option value="DDP">DDP</option><option value="FCA">FCA</option>
-                </select>
-              </div>
+              {!isService && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">TESLİM ŞEKLİ (DELIVERY TERM)</label>
+                  <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white font-bold" value={deliveryTerm} onChange={e => setDeliveryTerm(e.target.value)}>
+                    <option value="DAP">DAP</option><option value="CIF">CIF</option><option value="FOB">FOB</option><option value="EXW">EXW</option><option value="DDP">DDP</option><option value="FCA">FCA</option>
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">BANKA HESABI</label>
                 <select className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm bg-white" value={selectedBankId} onChange={e => setSelectedBankId(e.target.value)}>
@@ -3120,19 +3194,19 @@
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-700 mb-1">ÖDEME NOTU / ŞARTI (OPSİYONEL)</label>
-                <input type="text" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm" value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} placeholder={`Örn: ${advanceRate}% Advance payment prior to production, ${100 - (Number(advanceRate) || 0)}% before shipment`} />
+                <input type="text" className="w-full px-3 py-1.5 border rounded-lg outline-none text-sm" value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} placeholder={isService ? 'Örn: 100% UPON RECEIPT OF INVOICE' : `Örn: ${advanceRate}% Advance payment prior to production, ${100 - (Number(advanceRate) || 0)}% before shipment`} />
               </div>
             </div>
 
             <div className="flex justify-between items-center gap-2">
               <div className="flex items-center gap-2">
                 <button type="button" onClick={handleAddRow} className="bg-white border text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center shadow-sm hover:bg-slate-50">
-                  <Plus size={16} className="mr-1" /> Sipariş Kalemi Ekle
+                  <Plus size={16} className="mr-1" /> {isService ? 'Hizmet Kalemi Ekle' : 'Sipariş Kalemi Ekle'}
                 </button>
                 <div className="relative inline-block">
                   <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} disabled={isExcelLoading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                   <button type="button" className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium flex items-center shadow-sm">
-                    <Upload size={16} className="mr-1" /> Excel'den Sipariş Yükle
+                    <Upload size={16} className="mr-1" /> Excel'den Yükle
                   </button>
                 </div>
               </div>
@@ -3154,7 +3228,7 @@
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-sm">
                   {items.length === 0 ? (
-                    <tr><td colSpan={columns.length + 1} className="p-8 text-center text-slate-500">Sipariş kalemi ekleyin veya Excel'den yükleyin.</td></tr>
+                    <tr><td colSpan={columns.length + 1} className="p-8 text-center text-slate-500">{isService ? 'Hizmet kalemi ekleyin.' : 'Sipariş kalemi ekleyin veya Excel\'den yükleyin.'}</td></tr>
                   ) : (
                     items.map((row, index) => (
                       <tr key={row.id} className="hover:bg-rose-50/40">
@@ -3181,7 +3255,7 @@
                 <tfoot className="bg-slate-900 text-white font-bold text-xs sticky bottom-0 z-10">
                   <tr>
                     <td colSpan={6} className="p-2.5 text-right uppercase tracking-wider font-extrabold text-slate-300">
-                      TOPLAM SİPARİŞ & AVANS ÖZETİ:
+                      TOPLAM ÖZETİ:
                     </td>
                     <td className="p-2.5 text-right font-extrabold text-amber-400">
                       {totals.totalAdet.toLocaleString('tr-TR')} PCS
@@ -3192,9 +3266,11 @@
                     <td className="p-2.5 text-right font-extrabold text-emerald-400">
                       Toplam: {totals.totalTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
                     </td>
-                    <td className="p-2.5 text-right font-bold text-sky-300">
-                      {totals.totalNetKg ? `${totals.totalNetKg.toLocaleString('tr-TR')} KG` : '-'}
-                    </td>
+                    {!isService && (
+                      <td className="p-2.5 text-right font-bold text-sky-300">
+                        {totals.totalNetKg ? `${totals.totalNetKg.toLocaleString('tr-TR')} KG` : '-'}
+                      </td>
+                    )}
                   </tr>
                 </tfoot>
               </table>
@@ -3233,7 +3309,6 @@
       if (val === null || val === undefined) return null;
       const str = String(val).trim();
       if (!str) return null;
-      // Eğer içinde harf veya % işareti varsa (Örn: "RECIP TR 15 % DUTY") bu bir metin etiketidir, direkt tutar değildir
       if (/[a-zA-ZğüşıöçĞÜŞİÖÇ%]/.test(str)) return null;
       let clean = str.replace(/\s/g, '');
       if (clean.includes(',') && clean.includes('.')) {
@@ -3263,8 +3338,8 @@
       );
     }
 
-    // Kurumsal PROFORMA INVOICE A4 Görünümü (Seçilebilir 4 Başlık ve Firma Tema Rengi Uyumlu)
-    function ProformaInvoicePage({ data, exporter, customer, transporter, deliveryTerm, showStamp, advanceRate, hasDownPayment, documentTitle }) {
+    // Kurumsal PROFORMA INVOICE A4 Görünümü (Malzeme & Hizmet Modu, Seçilebilir 4 Başlık ve Firma Tema Rengi Uyumlu)
+    function ProformaInvoicePage({ data, exporter, customer, transporter, deliveryTerm, showStamp, advanceRate, hasDownPayment, documentTitle, proformaType }) {
       const rawItems = data?.items || [];
       const items = useMemo(() => groupItemsForInvoice(rawItems), [rawItems]);
       const extraCharges = useMemo(() => (data?.extraCharges || []).filter(ec => ec && ec.description && String(ec.description).trim() !== ''), [data?.extraCharges]);
@@ -3273,6 +3348,7 @@
 
       const activeDocTitle = documentTitle || data?.documentTitle || 'PROFORMA INVOICE';
       const isProformaTitle = activeDocTitle.toUpperCase().includes('PROFORMA');
+      const isService = (proformaType || data?.proformaType) === 'service';
 
       const totals = useMemo(() => {
         let totalAdet = 0;
@@ -3334,7 +3410,7 @@
       const shipmentNo = data?.shipmentNo || '';
       const bookingNo = data?.bookingNo || '';
       const containerNo = data?.containerNo || '';
-      const hasContainerInfo = Boolean((shipmentNo && shipmentNo.trim()) || (bookingNo && bookingNo.trim()) || (containerNo && containerNo.trim()));
+      const hasContainerInfo = !isService && Boolean((shipmentNo && shipmentNo.trim()) || (bookingNo && bookingNo.trim()) || (containerNo && containerNo.trim()));
 
       const selectedBank = exporter?.banks?.find(b => b.id === data?.selectedBankId) || exporter?.banks?.filter(b => b.currency === currency)[0] || exporter?.banks?.[0];
 
@@ -3354,9 +3430,9 @@
 
       const emptyZebraCount = isFewRows ? Math.max(0, (hasContainerInfo ? 7 : 9) - totalRows) : 0;
 
-      const defaultPaymentText = rate > 0
-        ? `${rate}% ADVANCE PAYMENT PRIOR TO PRODUCTION, ${100 - rate}% BALANCE BEFORE SHIPMENT.`
-        : '100% BEFORE SHIPMENT.';
+      const defaultPaymentText = isService
+        ? (rate > 0 ? `${rate}% ADVANCE PAYMENT, ${100 - rate}% BALANCE.` : '100% UPON RECEIPT OF INVOICE.')
+        : (rate > 0 ? `${rate}% ADVANCE PAYMENT PRIOR TO PRODUCTION, ${100 - rate}% BALANCE BEFORE SHIPMENT.` : '100% BEFORE SHIPMENT.');
 
       return (
         <div className="exporter-theme-scope bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
@@ -3424,10 +3500,12 @@
                 </div>
                 <div className="border border-slate-300 rounded-xl bg-white px-3.5 py-2 flex-1 flex flex-col justify-center mt-2">
                   <div className="text-[10px] font-bold divide-y divide-slate-200">
-                    <div className="flex justify-between py-1">
-                      <span className="text-black font-bold">Delivery Date</span>
-                      <span className="text-right text-black font-extrabold">{formattedDeliveryDate || '-'}</span>
-                    </div>
+                    {(!isService || formattedDeliveryDate) && (
+                      <div className="flex justify-between py-1">
+                        <span className="text-black font-bold">Delivery Date</span>
+                        <span className="text-right text-black font-extrabold">{formattedDeliveryDate || '-'}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between py-1">
                       <span className="text-black font-bold">{isProformaTitle ? 'Date of Proforma' : 'Date of Invoice'}</span>
                       <span className="text-right text-black font-extrabold">{proformaDate}</span>
@@ -3457,7 +3535,7 @@
               <thead>
                 <tr className="bg-[#a80000] text-white text-center">
                   <th colSpan="4" className="border-r border-b border-white/30 py-1.5 px-1 font-extrabold uppercase tracking-wider text-[10px]">
-                    DESCRIPTION OF THE GOODS
+                    {isService ? 'DESCRIPTION OF SERVICES' : 'DESCRIPTION OF THE GOODS'}
                   </th>
                   <th rowSpan="2" className="border-r border-white/30 p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
                     QUANTITY
@@ -3472,8 +3550,8 @@
                 <tr className="bg-[#a80000] text-white text-center text-[9px] border-b border-slate-300">
                   <th className="font-bold border-r border-white/30 py-1 px-1 whitespace-nowrap">Order No</th>
                   <th className="font-bold border-r border-white/30 py-1 px-0.5 whitespace-nowrap">Pos No</th>
-                  <th className="font-bold border-r border-white/30 py-1 px-1 whitespace-nowrap">Part Name</th>
-                  <th className="font-bold border-r border-white/30 py-1 px-1 whitespace-nowrap">Drawing No</th>
+                  <th className="font-bold border-r border-white/30 py-1 px-1 whitespace-nowrap">{isService ? 'Description' : 'Part Name'}</th>
+                  <th className="font-bold border-r border-white/30 py-1 px-1 whitespace-nowrap">{isService ? 'Ref / Code' : 'Drawing No'}</th>
                 </tr>
               </thead>
               <tbody className="align-middle text-black">
@@ -3568,11 +3646,15 @@
               <tbody>
                 <tr className="border-b border-slate-300">
                   <td className="border-r border-slate-300 p-2 text-[#003d99] font-bold text-[8.5px] leading-snug bg-[#eef2f7] align-middle">
-                    According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
+                    {!isService && (
+                      <span>
+                        According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
+                      </span>
+                    )}
                   </td>
                   <td className="p-2.5 bg-white align-bottom">
                     <div className="flex justify-between items-end font-extrabold text-[11px] text-black">
-                      <span>Net Order Amount</span>
+                      <span>{isService ? 'Net Amount' : 'Net Order Amount'}</span>
                       <span>{netOrderAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</span>
                     </div>
                   </td>
@@ -3581,38 +3663,47 @@
                 <tr>
                   <td className="border-r border-slate-300 p-2.5 align-top bg-white">
                     <div className="grid grid-cols-[118px_1fr] gap-x-2 gap-y-0.5 text-[9px] uppercase items-center">
-                      <div className="text-black font-extrabold">TOTAL QUANTITY :</div>
-                      <div className="text-black font-semibold flex items-center justify-between pr-2">
-                        <span>{totals.totalAdet.toLocaleString('tr-TR')} PCS</span>
-                        {transporter && <CarrierBadge transporter={transporter} />}
-                      </div>
-
-                      {totals.totalNetKg > 0 && (
+                      {/* SADECE MALZEME PROFORMASINDA GÖRÜNECEK KISIMLAR */}
+                      {!isService && (
                         <>
-                          <div className="text-black font-extrabold">NET WEIGHT (EST.) :</div>
-                          <div className="text-black font-semibold">{totals.totalNetKg.toLocaleString('tr-TR')} KGS</div>
+                          <div className="text-black font-extrabold">TOTAL QUANTITY :</div>
+                          <div className="text-black font-semibold flex items-center justify-between pr-2">
+                            <span>{totals.totalAdet.toLocaleString('tr-TR')} PCS</span>
+                            {transporter && <CarrierBadge transporter={transporter} />}
+                          </div>
+
+                          {totals.totalNetKg > 0 && (
+                            <>
+                              <div className="text-black font-extrabold">NET WEIGHT (EST.) :</div>
+                              <div className="text-black font-semibold">{totals.totalNetKg.toLocaleString('tr-TR')} KGS</div>
+                            </>
+                          )}
+
+                          <div className="text-black font-extrabold">DELIVERY TERM :</div>
+                          <div className="text-[#a80000] font-black">{deliveryTerm || 'DAP'} {customer?.country}</div>
                         </>
                       )}
-
-                      <div className="text-black font-extrabold">DELIVERY TERM :</div>
-                      <div className="text-[#a80000] font-black">{deliveryTerm || 'DAP'} {customer?.country}</div>
 
                       <div className="text-black font-extrabold self-start">PAYMENT TERMS :</div>
                       <div className="text-[#0047b3] font-bold text-[8.5px] leading-tight">
                         {data?.paymentTerms || defaultPaymentText}
                       </div>
 
-                      {customer?.htsNo && (
+                      {!isService && (
                         <>
-                          <div className="text-black font-extrabold">HS / HTS CODE :</div>
-                          <div className="text-[#003d99] font-black">{customer.htsNo}</div>
+                          {customer?.htsNo && (
+                            <>
+                              <div className="text-black font-extrabold">HS / HTS CODE :</div>
+                              <div className="text-[#003d99] font-black">{customer.htsNo}</div>
+                            </>
+                          )}
+
+                          <div className="text-black font-extrabold pt-0.5">ORIGIN :</div>
+                          <div className="text-black font-extrabold flex items-center gap-1.5 pt-0.5">
+                            TÜRKİYE TR <span className="bg-[#a80000] text-white px-1 text-[7px] rounded-sm font-black">C*</span>
+                          </div>
                         </>
                       )}
-
-                      <div className="text-black font-extrabold pt-0.5">ORIGIN :</div>
-                      <div className="text-black font-extrabold flex items-center gap-1.5 pt-0.5">
-                        TÜRKİYE TR <span className="bg-[#a80000] text-white px-1 text-[7px] rounded-sm font-black">C*</span>
-                      </div>
 
                       <div className="col-span-2 border-t border-slate-300 my-1"></div>
 
@@ -3647,7 +3738,9 @@
 
                         <div className="flex justify-between items-center px-2.5 py-2 border-b-4 border-double border-slate-400 text-[11px] bg-white">
                           <span className="font-extrabold text-black">Total Amount</span>
-                          <span className="text-[#a80000] text-[9.5px] font-black uppercase text-center px-1">{deliveryTerm || 'DAP'} {customer?.country}</span>
+                          {!isService && (
+                            <span className="text-[#a80000] text-[9.5px] font-black uppercase text-center px-1">{deliveryTerm || 'DAP'} {customer?.country}</span>
+                          )}
                           <span className="font-black text-black whitespace-nowrap">{finalOrderAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</span>
                         </div>
 
@@ -3708,6 +3801,7 @@
       const [showStamp, setShowStamp] = useState(true);
       const [advanceRate, setAdvanceRate] = useState(proforma?.advanceRate ?? 30);
       const [docTitle, setDocTitle] = useState(proforma?.documentTitle || 'PROFORMA INVOICE');
+      const [profType, setProfType] = useState(proforma?.proformaType || 'goods');
 
       return (
         <div className="fixed inset-0 bg-slate-900/90 z-50 flex flex-col p-4 print-modal-wrapper">
@@ -3718,7 +3812,28 @@
                 <h3 className="text-base font-bold text-slate-800">Proforma Fatura Önizleme ({proforma?.proformaNumber})</h3>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex items-center bg-slate-200 p-1 rounded-lg border border-slate-300 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setProfType('goods')}
+                    className={`px-2.5 py-1 rounded font-extrabold transition-colors ${
+                      profType !== 'service' ? 'bg-white text-blue-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    📦 Malzeme
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProfType('service')}
+                    className={`px-2.5 py-1 rounded font-extrabold transition-colors ${
+                      profType === 'service' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    🛠️ Hizmet
+                  </button>
+                </div>
+
                 <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-300 text-xs">
                   <span className="font-bold text-indigo-800">Fatura Başlığı:</span>
                   <select
@@ -3734,7 +3849,7 @@
                 </div>
 
                 <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-300 text-xs">
-                  <span className="font-bold text-rose-700">Avans Oranı (%):</span>
+                  <span className="font-bold text-rose-700">Avans (%):</span>
                   <input
                     type="number"
                     min="0"
@@ -3771,6 +3886,7 @@
                 advanceRate={advanceRate}
                 hasDownPayment={Number(advanceRate) > 0}
                 documentTitle={docTitle}
+                proformaType={profType}
               />
             </div>
           </div>
