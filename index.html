@@ -4823,7 +4823,7 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 2. PACKING LIST / ÇEKİ LİSTESİ (Tam Alana Otomatik Oturan Dinamik Tablo) */}
+              {/* 2. PACKING LIST / ÇEKİ LİSTESİ (Alt Barları Koru & Tabloyu Kalan Alana Yay) */}
               {/* ========================================================================= */}
               {activeTab === 'packing' && (() => {
                 const totalPackRows = processedRows.length;
@@ -4832,12 +4832,11 @@
                 const ROWS_PER_NEXT_PAGE = 34;
 
                 const isMultiPage = totalPackRows > MAX_SINGLE_PAGE_ROWS;
-                const isHighDensity = !isMultiPage && totalPackRows > 25;
-                const isMedDensity = !isMultiPage && totalPackRows > 16 && totalPackRows <= 25;
+                const isHighDensity = !isMultiPage && totalPackRows > 24;
+                const isMedDensity = !isMultiPage && totalPackRows > 16 && totalPackRows <= 24;
 
-                // Yazı boyutu sıkışık değil, okunaklı; dikey boşluk ise tablo yüksekliğine göre otomatik yayılır
                 const dynamicPackRowPad = isHighDensity
-                  ? 'py-[2px] px-2 text-[9px] leading-snug'
+                  ? 'py-[1.5px] px-2 text-[8.8px] leading-tight'
                   : isMedDensity
                   ? 'py-1 px-2 text-[9.5px] leading-snug'
                   : 'py-1.5 px-2.5 text-[10px]';
@@ -4871,17 +4870,17 @@
                       return (
                         <div
                           key={`pack-page-${pageIndex}`}
-                          className={`bg-white ${isHighDensity ? 'p-5' : 'p-6'} mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300`}
+                          className={`bg-white ${isHighDensity ? 'py-4 px-5' : 'p-6'} mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300`}
                           style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}
                         >
                           {/* ÜST BÖLÜM: Oval Kartlar */}
                           <div className="shrink-0">
-                            <div className={`flex flex-col items-center ${isHighDensity ? 'mb-1.5' : 'mb-2'}`}>
+                            <div className={`flex flex-col items-center ${isHighDensity ? 'mb-1' : 'mb-2'}`}>
                               {exporter?.logo && (
                                 <img
                                   src={exporter.logo}
                                   alt="Exporter Logo"
-                                  className={`${isHighDensity ? 'h-16 max-h-[60px]' : 'h-20 max-h-[78px]'} max-w-[240px] object-contain`}
+                                  className={`${isHighDensity ? 'h-14 max-h-[54px]' : 'h-20 max-h-[78px]'} max-w-[240px] object-contain`}
                                 />
                               )}
                             </div>
@@ -4890,21 +4889,21 @@
                               <>
                                 {/* CUSTOMER INFO CARD */}
                                 <div className={`border border-slate-300 rounded-xl bg-white ${isHighDensity ? 'mb-1.5 text-[9.5px]' : 'mb-2.5 text-[10px]'} shadow-[0_1px_2px_rgba(0,0,0,0.03)] overflow-hidden`}>
-                                  <div className={`grid grid-cols-[105px_1fr_170px] gap-3 ${isHighDensity ? 'p-2.5' : 'p-3'} items-center`}>
-                                    <div className="font-extrabold text-[#0047b3] self-start pt-0.5 tracking-wider uppercase text-[10px]">
+                                  <div className={`grid grid-cols-[105px_1fr_170px] gap-3 ${isHighDensity ? 'p-2' : 'p-3'} items-center`}>
+                                    <div className="font-extrabold text-[#0047b3] self-start pt-0.5 tracking-wider uppercase text-[9.5px]">
                                       CUSTOMER
                                     </div>
                                     <div className="flex flex-col border-l border-slate-200 pl-3.5">
                                       <div className={`font-black ${isHighDensity ? 'text-[12px]' : 'text-[13px]'} text-black uppercase leading-snug`}>{customer?.name}</div>
                                       <div className="text-black mt-0.5 leading-snug">{customer?.address}</div>
-                                      <div className="flex flex-wrap items-center gap-6 mt-1 font-extrabold text-black">
+                                      <div className="flex flex-wrap items-center gap-6 mt-0.5 font-extrabold text-black">
                                         <span className="uppercase">{customer?.country}</span>
                                         {customer?.vatNo && <span>VAT ID: {customer.vatNo}</span>}
                                       </div>
                                     </div>
                                     <div className="flex flex-col items-end justify-between h-full">
-                                      {customer?.logo && <img src={customer.logo} alt="Customer Logo" className={`${isHighDensity ? 'h-9' : 'h-11'} max-w-[160px] object-contain`} />}
-                                      <div className="text-[10px] font-extrabold text-black mt-auto pt-1.5">
+                                      {customer?.logo && <img src={customer.logo} alt="Customer Logo" className={`${isHighDensity ? 'h-8' : 'h-11'} max-w-[160px] object-contain`} />}
+                                      <div className="text-[9.5px] font-extrabold text-black mt-auto pt-1">
                                         Date: {invoiceDate}
                                         {isMultiPage && <span className="ml-2 text-[#a80000]">(Page {pageIndex + 1}/{pages.length})</span>}
                                       </div>
@@ -4912,9 +4911,9 @@
                                   </div>
 
                                   {hasCustomDelivery && (
-                                    <div className={`grid grid-cols-[105px_1fr] gap-3 ${isHighDensity ? 'px-2.5 py-1' : 'px-3 py-1.5'} border-t border-slate-200 bg-[#eef2f7]/60 items-center`}>
-                                      <div className="font-black text-[#a80000] text-[9px] uppercase tracking-wide">DELIVERY ADDRESS</div>
-                                      <div className="font-bold text-[#0047b3] text-[9.5px] border-l border-slate-300 pl-3.5 leading-snug whitespace-pre-line">
+                                    <div className={`grid grid-cols-[105px_1fr] gap-3 ${isHighDensity ? 'px-2 py-1' : 'px-3 py-1.5'} border-t border-slate-200 bg-[#eef2f7]/60 items-center`}>
+                                      <div className="font-black text-[#a80000] text-[8.5px] uppercase tracking-wide">DELIVERY ADDRESS</div>
+                                      <div className="font-bold text-[#0047b3] text-[9px] border-l border-slate-300 pl-3.5 leading-snug whitespace-pre-line">
                                         {customDeliveryAddress}
                                       </div>
                                     </div>
@@ -4922,12 +4921,12 @@
                                 </div>
 
                                 {/* YOUR ORDER NO CARD */}
-                                <div className={`grid grid-cols-[105px_1fr] gap-3 ${isHighDensity ? 'text-[9px] mb-1.5 px-2.5 py-1.5' : 'text-[9.5px] mb-2 px-3 py-2'} border border-slate-300 rounded-xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)] items-center`}>
+                                <div className={`grid grid-cols-[105px_1fr] gap-3 ${isHighDensity ? 'text-[8.8px] mb-1 px-2.5 py-1' : 'text-[9.5px] mb-2 px-3 py-2'} border border-slate-300 rounded-xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)] items-center`}>
                                   <div className="font-extrabold uppercase text-[#0047b3] tracking-wider">YOUR ORDER NO</div>
-                                  <div className="leading-snug font-bold text-black border-l border-slate-200 pl-3.5 break-words">{uniqueOrders}</div>
+                                  <div className="leading-tight font-bold text-black border-l border-slate-200 pl-3.5 break-words">{uniqueOrders}</div>
                                 </div>
 
-                                <div className={`text-center font-bold ${isHighDensity ? 'text-[9.5px] mb-1.5' : 'text-[10px] mb-2'} text-slate-800`}>
+                                <div className={`text-center font-bold ${isHighDensity ? 'text-[9px] mb-1' : 'text-[10px] mb-2'} text-slate-800`}>
                                   We accomplished the fabricating of the <span className="underline font-extrabold text-black">{uniquePartNames || 'parts'}</span>. You can find detailed packing list as below.
                                 </div>
                               </>
@@ -4948,159 +4947,163 @@
                           </div>
 
                           {/* ORTA & ALT ENTEGRE TABLO BLOĞU */}
-                          <div className="flex-1 flex flex-col border border-slate-300 rounded-xl overflow-hidden bg-white min-h-0">
-                            <table
-                              className={`w-full ${stretchTableToFill ? 'flex-1 h-full' : ''} text-center border-collapse`}
-                              style={{ tableLayout: 'fixed', height: stretchTableToFill ? '100%' : 'auto' }}
-                            >
-                              <colgroup>
-                                <col className="w-[46%]" />
-                                <col className="w-[6.5%]" />
-                                <col className="w-[8.5%]" />
-                                <col className="w-[12.5%]" />
-                                <col className="w-[12.5%]" />
-                                <col className="w-[14%]" />
-                              </colgroup>
-                              <thead>
-                                <tr className="bg-[#a80000] text-white border-b border-white/30">
-                                  <th colSpan="6" className="py-1.5 px-2 font-extrabold uppercase tracking-wider text-[10px]">
-                                    ÇEKİ VE AMBALAJ LİSTESİ <span className="text-[9px] font-bold ml-1 opacity-90">(WEIGHT AND PACKING LIST)</span>
-                                  </th>
-                                </tr>
-                                <tr className="bg-[#a80000] text-white border-b border-slate-300 text-[9px] font-bold">
-                                  <th className="border-r border-white/30 py-1 px-2.5 text-left">Malın Cinsi <span className="font-normal opacity-85">(Description)</span></th>
-                                  <th className="border-r border-white/30 py-1 px-0.5">Miktarı <span className="font-normal opacity-85">(Qty)</span></th>
-                                  <th className="border-r border-white/30 py-1 px-0.5">Ambalaj <span className="font-normal opacity-85">(Packing)</span></th>
-                                  <th className="border-r border-white/30 py-1 px-1">Net Ağırlık <span className="font-normal opacity-85">(Net)</span></th>
-                                  <th className="border-r border-white/30 py-1 px-1">Brüt Ağırlık <span className="font-normal opacity-85">(Gross)</span></th>
-                                  <th className="py-1 px-1">Palet Ebatları <span className="font-normal opacity-85">(Dim.)</span></th>
-                                </tr>
-                              </thead>
-                              <tbody className="align-middle text-black">
-                                <tr className="bg-slate-100/90 border-b border-slate-300">
-                                  <td colSpan="6" className="text-left font-extrabold py-1 px-2.5 text-[9.5px] text-black">
-                                    Çelik Dökümden Aşınır Parçalar / <span className="text-[#0047b3] font-bold">Steel Casting Wear Parts</span>
-                                  </td>
-                                </tr>
-                                {pageRows.map((rowInfo, idx) => {
-                                  const item = rowInfo.item;
-                                  const isEven = idx % 2 === 1;
-                                  const rowBg = rowInfo.isMerged ? rowInfo.groupColor : (isEven ? 'bg-[#eef2f7]' : 'bg-white');
-                                  const cleanedDwg = cleanDrawingNo(item.resimNo);
+                          <div className="flex-1 flex flex-col justify-between border border-slate-300 rounded-xl overflow-hidden bg-white min-h-0">
+                            {/* BÖLME 1: KALEMLER TABLOSU (Alt barların üstünde kalan alanı tam doldurur) */}
+                            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                              <table
+                                className={`w-full ${stretchTableToFill ? 'flex-1 h-full' : ''} text-center border-collapse`}
+                                style={{ tableLayout: 'fixed', height: stretchTableToFill ? '100%' : 'auto' }}
+                              >
+                                <colgroup>
+                                  <col className="w-[46%]" />
+                                  <col className="w-[6.5%]" />
+                                  <col className="w-[8.5%]" />
+                                  <col className="w-[12.5%]" />
+                                  <col className="w-[12.5%]" />
+                                  <col className="w-[14%]" />
+                                </colgroup>
+                                <thead>
+                                  <tr className="bg-[#a80000] text-white border-b border-white/30">
+                                    <th colSpan="6" className={`${isHighDensity ? 'py-1' : 'py-1.5'} px-2 font-extrabold uppercase tracking-wider text-[10px]`}>
+                                      ÇEKİ VE AMBALAJ LİSTESİ <span className="text-[9px] font-bold ml-1 opacity-90">(WEIGHT AND PACKING LIST)</span>
+                                    </th>
+                                  </tr>
+                                  <tr className="bg-[#a80000] text-white border-b border-slate-300 text-[9px] font-bold">
+                                    <th className={`border-r border-white/30 ${isHighDensity ? 'py-0.5' : 'py-1'} px-2.5 text-left`}>Malın Cinsi <span className="font-normal opacity-85">(Description)</span></th>
+                                    <th className={`border-r border-white/30 ${isHighDensity ? 'py-0.5' : 'py-1'} px-0.5`}>Miktarı <span className="font-normal opacity-85">(Qty)</span></th>
+                                    <th className={`border-r border-white/30 ${isHighDensity ? 'py-0.5' : 'py-1'} px-0.5`}>Ambalaj <span className="font-normal opacity-85">(Packing)</span></th>
+                                    <th className={`border-r border-white/30 ${isHighDensity ? 'py-0.5' : 'py-1'} px-1`}>Net Ağırlık <span className="font-normal opacity-85">(Net)</span></th>
+                                    <th className={`border-r border-white/30 ${isHighDensity ? 'py-0.5' : 'py-1'} px-1`}>Brüt Ağırlık <span className="font-normal opacity-85">(Gross)</span></th>
+                                    <th className={`${isHighDensity ? 'py-0.5' : 'py-1'} px-1`}>Palet Ebatları <span className="font-normal opacity-85">(Dim.)</span></th>
+                                  </tr>
+                                </thead>
+                                <tbody className="align-middle text-black">
+                                  <tr className="bg-slate-100/90 border-b border-slate-300">
+                                    <td colSpan="6" className={`text-left font-extrabold ${isHighDensity ? 'py-0.5 text-[9px]' : 'py-1 text-[9.5px]'} px-2.5 text-black`}>
+                                      Çelik Dökümden Aşınır Parçalar / <span className="text-[#0047b3] font-bold">Steel Casting Wear Parts</span>
+                                    </td>
+                                  </tr>
+                                  {pageRows.map((rowInfo, idx) => {
+                                    const item = rowInfo.item;
+                                    const isEven = idx % 2 === 1;
+                                    const rowBg = rowInfo.isMerged ? rowInfo.groupColor : (isEven ? 'bg-[#eef2f7]' : 'bg-white');
+                                    const cleanedDwg = cleanDrawingNo(item.resimNo);
 
-                                  return (
-                                    <tr key={idx} className={`${rowBg} border-b border-slate-300`}>
-                                      <td className={`border-r border-slate-300 ${dynamicPackRowPad} text-left font-medium`}>
-                                        <span className="font-bold text-black">{item.parcaAdi}</span>{cleanedDwg ? ` — ${cleanedDwg}` : ''}
-                                      </td>
-                                      <td className={`border-r border-slate-300 ${dynamicPackRowPad} font-extrabold`}>{item.adet}</td>
+                                    return (
+                                      <tr key={idx} className={`${rowBg} border-b border-slate-300`}>
+                                        <td className={`border-r border-slate-300 ${dynamicPackRowPad} text-left font-medium`}>
+                                          <span className="font-bold text-black">{item.parcaAdi}</span>{cleanedDwg ? ` — ${cleanedDwg}` : ''}
+                                        </td>
+                                        <td className={`border-r border-slate-300 ${dynamicPackRowPad} font-extrabold`}>{item.adet}</td>
 
-                                      {rowInfo.isFirstInGroup ? (
-                                        <>
-                                          <td rowSpan={rowInfo.rowSpan} className={`border-r border-slate-300 ${dynamicPackRowPad} font-extrabold text-[#003d99] align-middle ${rowBg}`}>{item.paletNo}</td>
+                                        {rowInfo.isFirstInGroup ? (
+                                          <>
+                                            <td rowSpan={rowInfo.rowSpan} className={`border-r border-slate-300 ${dynamicPackRowPad} font-extrabold text-[#003d99] align-middle ${rowBg}`}>{item.paletNo}</td>
+                                            <td className={`border-r border-slate-300 ${dynamicPackRowPad} whitespace-nowrap font-medium`}>{item.netKg ? `${item.netKg} KGS` : '-'}</td>
+                                            <td rowSpan={rowInfo.rowSpan} className={`border-r border-slate-300 ${dynamicPackRowPad} font-extrabold text-black align-middle whitespace-nowrap ${rowBg}`}>{item.brutKg ? `${item.brutKg} KGS` : '-'}</td>
+                                            <td rowSpan={rowInfo.rowSpan} className={`${dynamicPackRowPad} font-semibold text-black align-middle whitespace-nowrap ${rowBg}`}>{item.paletEbatlari}</td>
+                                          </>
+                                        ) : (
                                           <td className={`border-r border-slate-300 ${dynamicPackRowPad} whitespace-nowrap font-medium`}>{item.netKg ? `${item.netKg} KGS` : '-'}</td>
-                                          <td rowSpan={rowInfo.rowSpan} className={`border-r border-slate-300 ${dynamicPackRowPad} font-extrabold text-black align-middle whitespace-nowrap ${rowBg}`}>{item.brutKg ? `${item.brutKg} KGS` : '-'}</td>
-                                          <td rowSpan={rowInfo.rowSpan} className={`${dynamicPackRowPad} font-semibold text-black align-middle whitespace-nowrap ${rowBg}`}>{item.paletEbatlari}</td>
-                                        </>
-                                      ) : (
-                                        <td className={`border-r border-slate-300 ${dynamicPackRowPad} whitespace-nowrap font-medium`}>{item.netKg ? `${item.netKg} KGS` : '-'}</td>
-                                      )}
-                                    </tr>
-                                  );
-                                })}
-                                {Array.from({ length: pageEmptyZebra }).map((_, eIdx) => {
-                                  const totalIdx = pageRows.length + eIdx;
-                                  const zebraBg = totalIdx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
-                                  return (
-                                    <tr key={`empty-pack-${eIdx}`} className={`${zebraBg} border-b border-slate-300 h-[22px]`}>
-                                      <td className="border-r border-slate-300"></td>
-                                      <td className="border-r border-slate-300"></td>
-                                      <td className="border-r border-slate-300"></td>
-                                      <td className="border-r border-slate-300"></td>
-                                      <td className="border-r border-slate-300"></td>
-                                      <td></td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
+                                        )}
+                                      </tr>
+                                    );
+                                  })}
+                                  {Array.from({ length: pageEmptyZebra }).map((_, eIdx) => {
+                                    const totalIdx = pageRows.length + eIdx;
+                                    const zebraBg = totalIdx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
+                                    return (
+                                      <tr key={`empty-pack-${eIdx}`} className={`${zebraBg} border-b border-slate-300 h-[22px]`}>
+                                        <td className="border-r border-slate-300"></td>
+                                        <td className="border-r border-slate-300"></td>
+                                        <td className="border-r border-slate-300"></td>
+                                        <td className="border-r border-slate-300"></td>
+                                        <td className="border-r border-slate-300"></td>
+                                        <td></td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
 
-                            {/* Sadece az satırlı (<12) evraklarda boşluk tutucu çalışır; çok satırlı evraklarda tablo tam oturur */}
-                            {!stretchTableToFill && <div className="flex-1 bg-white min-h-[4px]"></div>}
-
-                            {isLastPage ? (
-                              <>
-                                {/* SHIPMENT NO / BOOKING NO / CONTAINER NO VE HEMEN ARDINDAN HS CODE BLOĞU */}
-                                {hasPackingBottomBar && (
-                                  <div className="bg-white border-t border-slate-300 px-3 py-1.5 flex flex-wrap items-center gap-6 text-[9.5px] shrink-0">
-                                    {shipmentNo && (
-                                      <div className="font-black text-[#a80000]">
-                                        {shipmentNo.toLowerCase().startsWith('shipment') ? shipmentNo : `Shipment No. ${shipmentNo}`}
-                                      </div>
-                                    )}
-                                    {bookingNo && (
-                                      <div className="font-extrabold text-black">
-                                        {bookingNo.toLowerCase().startsWith('booking') ? bookingNo : `Booking ${bookingNo}`}
-                                      </div>
-                                    )}
-                                    {containerNo && (
-                                      <div className="font-extrabold text-[#0047b3] flex items-center gap-1">
-                                        <Icon name="package" size={13} className="text-[#0047b3]" />
-                                        <span>{containerNo}</span>
-                                      </div>
-                                    )}
-                                    {customer?.htsNo && (
-                                      <div className="font-extrabold text-[#003d99]">
-                                        HS / HTS CODE: <span className="text-black font-black">{customer.htsNo}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-
-                                {/* ALT REGÜLASYON & TOTAL BAR */}
-                                <div className="bg-[#eef2f7] py-1.5 px-3 text-center text-[#003d99] font-bold text-[8px] border-t border-b border-slate-300 leading-snug shrink-0">
-                                  According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
-                                </div>
-
-                                <table className="w-full text-center text-[10px] font-bold border-collapse shrink-0" style={{ tableLayout: 'fixed' }}>
-                                  <colgroup>
-                                    <col className="w-[46%]" />
-                                    <col className="w-[6.5%]" />
-                                    <col className="w-[8.5%]" />
-                                    <col className="w-[12.5%]" />
-                                    <col className="w-[12.5%]" />
-                                    <col className="w-[14%]" />
-                                  </colgroup>
-                                  <tbody>
-                                    <tr className="bg-white text-black">
-                                      <td className="border-r border-slate-300 py-1.5 px-2 uppercase font-black tracking-wider">TOTAL</td>
-                                      <td className="border-r border-slate-300 py-1.5 px-0.5 font-black">{totals?.totalAdet?.toLocaleString('tr-TR')}</td>
-                                      <td className="border-r border-slate-300 py-1.5 px-0.5 font-black text-[#003d99]">{totals?.paletCount}</td>
-                                      <td className="border-r border-slate-300 py-1.5 px-1 font-black whitespace-nowrap">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
-                                      <td className="border-r border-slate-300 py-1.5 px-1 font-black whitespace-nowrap">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
-                                      <td className="py-1 px-1 text-center align-middle bg-[#eef2f7]/60">
-                                        <div className="flex flex-col items-center justify-center leading-tight">
-                                          <CarrierBadge transporter={transporter} />
-                                          {transporter?.deliveryTerm && (
-                                            <span className="text-[#a80000] font-extrabold text-[8px] uppercase mt-0.5">
-                                              {transporter.deliveryTerm} {customer?.country || ''}
-                                            </span>
-                                          )}
+                            {/* BÖLME 2: ALT BARLAR (HER ZAMAN SABİT VE GÖRÜNÜR) */}
+                            <div className="shrink-0">
+                              {isLastPage ? (
+                                <>
+                                  {/* SHIPMENT NO / BOOKING NO / CONTAINER NO VE HS CODE BLOĞU */}
+                                  {hasPackingBottomBar && (
+                                    <div className={`bg-white border-t border-slate-300 px-3 ${isHighDensity ? 'py-1 text-[9px]' : 'py-1.5 text-[9.5px]'} flex flex-wrap items-center gap-6`}>
+                                      {shipmentNo && (
+                                        <div className="font-black text-[#a80000]">
+                                          {shipmentNo.toLowerCase().startsWith('shipment') ? shipmentNo : `Shipment No. ${shipmentNo}`}
                                         </div>
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              </>
-                            ) : (
-                              <div className="bg-[#eef2f7] py-1.5 px-3 text-right text-[#003d99] font-extrabold text-[9px] border-t border-slate-300 shrink-0">
-                                Devamı Sayfa {pageIndex + 2}'de / Continued on Page {pageIndex + 2} &rarr;
-                              </div>
-                            )}
+                                      )}
+                                      {bookingNo && (
+                                        <div className="font-extrabold text-black">
+                                          {bookingNo.toLowerCase().startsWith('booking') ? bookingNo : `Booking ${bookingNo}`}
+                                        </div>
+                                      )}
+                                      {containerNo && (
+                                        <div className="font-extrabold text-[#0047b3] flex items-center gap-1">
+                                          <Icon name="package" size={12} className="text-[#0047b3]" />
+                                          <span>{containerNo}</span>
+                                        </div>
+                                      )}
+                                      {customer?.htsNo && (
+                                        <div className="font-extrabold text-[#003d99]">
+                                          HS / HTS CODE: <span className="text-black font-black">{customer.htsNo}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* ALT REGÜLASYON BAR */}
+                                  <div className={`bg-[#eef2f7] ${isHighDensity ? 'py-1 text-[7.5px]' : 'py-1.5 text-[8px]'} px-3 text-center text-[#003d99] font-bold border-t border-b border-slate-300 leading-snug`}>
+                                    According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
+                                  </div>
+
+                                  {/* TOTAL TABLOSU */}
+                                  <table className={`w-full text-center ${isHighDensity ? 'text-[9.5px]' : 'text-[10px]'} font-bold border-collapse`} style={{ tableLayout: 'fixed' }}>
+                                    <colgroup>
+                                      <col className="w-[46%]" />
+                                      <col className="w-[6.5%]" />
+                                      <col className="w-[8.5%]" />
+                                      <col className="w-[12.5%]" />
+                                      <col className="w-[12.5%]" />
+                                      <col className="w-[14%]" />
+                                    </colgroup>
+                                    <tbody>
+                                      <tr className="bg-white text-black">
+                                        <td className={`border-r border-slate-300 ${isHighDensity ? 'py-1' : 'py-1.5'} px-2 uppercase font-black tracking-wider`}>TOTAL</td>
+                                        <td className={`border-r border-slate-300 ${isHighDensity ? 'py-1' : 'py-1.5'} px-0.5 font-black`}>{totals?.totalAdet?.toLocaleString('tr-TR')}</td>
+                                        <td className={`border-r border-slate-300 ${isHighDensity ? 'py-1' : 'py-1.5'} px-0.5 font-black text-[#003d99]`}>{totals?.paletCount}</td>
+                                        <td className={`border-r border-slate-300 ${isHighDensity ? 'py-1' : 'py-1.5'} px-1 font-black whitespace-nowrap`}>{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</td>
+                                        <td className={`border-r border-slate-300 ${isHighDensity ? 'py-1' : 'py-1.5'} px-1 font-black whitespace-nowrap`}>{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</td>
+                                        <td className="py-1 px-1 text-center align-middle bg-[#eef2f7]/60">
+                                          <div className="flex flex-col items-center justify-center leading-tight">
+                                            <CarrierBadge transporter={transporter} />
+                                            {transporter?.deliveryTerm && (
+                                              <span className="text-[#a80000] font-extrabold text-[8px] uppercase mt-0.5">
+                                                {transporter.deliveryTerm} {customer?.country || ''}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </>
+                              ) : (
+                                <div className="bg-[#eef2f7] py-1.5 px-3 text-right text-[#003d99] font-extrabold text-[9px] border-t border-slate-300">
+                                  Devamı Sayfa {pageIndex + 2}'de / Continued on Page {pageIndex + 2} &rarr;
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           {/* ALT KAŞE VE FİRMA BİLGİ BLOĞU */}
-                          <div className="pt-1.5 shrink-0">
+                          <div className={`${isHighDensity ? 'pt-1' : 'pt-1.5'} shrink-0`}>
                             {isLastPage && (
                               <div className="text-center text-[10px] font-extrabold relative flex flex-col items-center">
                                 <div>
@@ -5109,15 +5112,15 @@
                                   <span className="text-[#a80000]">ONLY {totals?.paletCount} Pallets</span>
                                 </div>
 
-                                <div className={`my-0.5 relative w-full flex justify-center ${isHighDensity ? 'min-h-[58px]' : 'min-h-[70px]'} items-center`}>
-                                  <StampImage maxW={isHighDensity ? '175px' : '190px'} maxH={isHighDensity ? '58px' : '70px'} />
+                                <div className={`my-0.5 relative w-full flex justify-center ${isHighDensity ? 'min-h-[52px]' : 'min-h-[70px]'} items-center`}>
+                                  <StampImage maxW={isHighDensity ? '165px' : '190px'} maxH={isHighDensity ? '52px' : '70px'} />
                                 </div>
                               </div>
                             )}
 
-                            <div className="w-full text-center text-[8.5px] bg-[#e2e8f0] border border-slate-300 rounded-lg py-1.5 px-2 font-bold text-black">
+                            <div className={`w-full text-center ${isHighDensity ? 'text-[8px] py-1' : 'text-[8.5px] py-1.5'} bg-[#e2e8f0] border border-slate-300 rounded-lg px-2 font-bold text-black`}>
                               {exporter?.name}<br />
-                              <span className="font-normal text-[8px]">{exporter?.address} Tel: {exporter?.phone} Fax: {exporter?.fax}</span><br />
+                              <span className="font-normal text-[7.5px]">{exporter?.address} Tel: {exporter?.phone} Fax: {exporter?.fax}</span><br />
                               VAT ID No: {exporter?.vatNo}
                             </div>
                           </div>
