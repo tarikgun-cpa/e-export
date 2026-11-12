@@ -3522,6 +3522,25 @@
       );
     }
 
+    // Banka Hesap No (Account No) Döndüren Yardımcı Fonksiyon (Girilmişse onu alır, yoksa IBAN'dan otomatik ayıklar)
+    const getBankAccountNo = (bank) => {
+      if (!bank) return '-';
+      if (bank.accountNo && String(bank.accountNo).trim() !== '') {
+        return String(bank.accountNo).trim();
+      }
+      if (bank.iban && String(bank.iban).trim() !== '') {
+        const cleanIban = String(bank.iban).replace(/\s+/g, '').toUpperCase();
+        // TR IBAN (26 karakter): İlk 10 karakterden sonraki 16 hane müşteri hesap numarasıdır
+        if (cleanIban.startsWith('TR') && cleanIban.length === 26) {
+          const rawAcc = cleanIban.substring(10); // Son 16 hane
+          const trimmed = rawAcc.replace(/^0+/, '');
+          return trimmed.length >= 6 ? trimmed : rawAcc;
+        }
+        return cleanIban.slice(-12);
+      }
+      return '-';
+    };
+
     // Duty Fee 2. Hücresine (dutyFeeLabel) Doğrudan Sayı/Tutar Girilmişse Algılayan Yardımcı Fonksiyon
     const parseDirectDutyValue = (val) => {
       if (val === null || val === undefined) return null;
@@ -3931,8 +3950,7 @@
                       <div className="text-black font-extrabold">SWIFT CODE</div>
                       <div className="text-black font-semibold">{selectedBank?.swift || '-'}</div>
 
-                      {selectedBank?.accountNo && (<><div className="text-black font-extrabold">ACCOUNT NO</div><div className="text-black font-semibold">{selectedBank.accountNo}</div></>)}
-
+                      <div className="text-black font-extrabold">ACCOUNT NO</div><div className="text-black font-semibold">{getBankAccountNo(selectedBank)}</div>
                       <div className="text-black font-extrabold">IBAN NO</div>
                       <div className="text-black font-extrabold">{selectedBank?.iban || '-'}</div>
                     </div>
@@ -4749,8 +4767,11 @@
                                  )}
 
                                  <div className="text-black font-extrabold">ORIGIN :</div>
-                                 <div className="text-black font-extrabold flex items-center gap-1.5">
-                                   TÜRKİYE TR <span className="bg-[#a80000] text-white px-1 text-[7px] rounded-sm font-black">C*</span>
+                                 <div className="text-black font-extrabold flex items-center justify-between pr-2">
+                                   <span className="flex items-center gap-1.5">
+                                     TÜRKİYE TR <span className="bg-[#a80000] text-white px-1 text-[7px] rounded-sm font-black">C*</span>
+                                   </span>
+                                   <CarrierBadge transporter={transporter} />
                                  </div>
                                  
                                  <div className="col-span-2 border-t border-slate-300 my-0.5"></div>
@@ -4761,12 +4782,8 @@
                                  <div className="text-black font-extrabold">SWIFT CODE</div>
                                  <div className="text-black font-semibold">{selectedBank?.swift || '-'}</div>
                                  
-                                 {selectedBank?.accountNo && String(selectedBank.accountNo).trim() !== '' && (
-                                   <>
-                                     <div className="text-black font-extrabold">ACCOUNT NO</div>
-                                     <div className="text-black font-semibold">{selectedBank.accountNo}</div>
-                                   </>
-                                 )}
+                                 <div className="text-black font-extrabold">ACCOUNT NO</div>
+                                 <div className="text-black font-semibold">{getBankAccountNo(selectedBank)}</div>
                                  
                                  <div className="text-black font-extrabold">IBAN NO</div>
                                  <div className="text-black font-extrabold">{selectedBank?.iban || '-'}</div>
