@@ -1298,7 +1298,7 @@
               <div>
                 <div className="flex justify-between items-center mb-3 border-b pb-1">
                   <h4 className="text-sm font-bold text-blue-800">BANKA HESAPLARI</h4>
-                  <button type="button" onClick={() => setBanks([...banks, { id: generateId(), currency: 'EUR', bankName: '', swift: '', iban: '' }])} className="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded flex items-center font-bold">
+                  <button type="button" onClick={() => setBanks([...banks, { id: generateId(), currency: 'EUR', bankName: '', swift: '', accountNo: '', iban: '' }])} className="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded flex items-center font-bold">
                     <Plus size={14} className="mr-1" /> Yeni Banka Ekle
                   </button>
                 </div>
@@ -1315,15 +1315,19 @@
                     </div>
                     <div className="flex-1 min-w-[120px]">
                       <label className="block text-[10px] font-bold text-slate-500 mb-1">BANKA ADI</label>
-                      <input type="text" value={b.bankName} onChange={e => setBanks(banks.map(item => item.id === b.id ? { ...item, bankName: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" placeholder="Banka Adı" />
+                      <input type="text" value={b.bankName || ''} onChange={e => setBanks(banks.map(item => item.id === b.id ? { ...item, bankName: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" placeholder="Banka Adı" />
                     </div>
-                    <div className="w-32">
+                    <div className="w-28">
                       <label className="block text-[10px] font-bold text-slate-500 mb-1">SWIFT</label>
-                      <input type="text" value={b.swift} onChange={e => setBanks(banks.map(item => item.id === b.id ? { ...item, swift: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" placeholder="SWIFT Kodu" />
+                      <input type="text" value={b.swift || ''} onChange={e => setBanks(banks.map(item => item.id === b.id ? { ...item, swift: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" placeholder="SWIFT" />
                     </div>
-                    <div className="flex-[2] min-w-[200px]">
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">HESAP NO / IBAN</label>
-                      <input type="text" value={b.iban} onChange={e => setBanks(banks.map(item => item.id === b.id ? { ...item, iban: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" placeholder="TR..." />
+                    <div className="w-36">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">HESAP NO (ACCOUNT)</label>
+                      <input type="text" value={b.accountNo || ''} onChange={e => setBanks(banks.map(item => item.id === b.id ? { ...item, accountNo: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" placeholder="Opsiyonel Hesap No" />
+                    </div>
+                    <div className="flex-[2] min-w-[190px]">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">IBAN NO</label>
+                      <input type="text" value={b.iban || ''} onChange={e => setBanks(banks.map(item => item.id === b.id ? { ...item, iban: e.target.value } : item))} className="w-full px-3 py-1.5 border rounded text-sm outline-none" placeholder="TR..." />
                     </div>
                     <div className="pt-4">
                       <button type="button" onClick={() => setBanks(banks.filter(item => item.id !== b.id))} className="text-red-500 p-2 hover:bg-red-50 rounded"><Trash2 size={18} /></button>
@@ -3927,8 +3931,7 @@
                       <div className="text-black font-extrabold">SWIFT CODE</div>
                       <div className="text-black font-semibold">{selectedBank?.swift || '-'}</div>
 
-                      <div className="text-black font-extrabold">ACCOUNT NO</div>
-                      <div className="text-black font-semibold">-</div>
+                      {selectedBank?.accountNo && (<><div className="text-black font-extrabold">ACCOUNT NO</div><div className="text-black font-semibold">{selectedBank.accountNo}</div></>)}
 
                       <div className="text-black font-extrabold">IBAN NO</div>
                       <div className="text-black font-extrabold">{selectedBank?.iban || '-'}</div>
@@ -4477,19 +4480,28 @@
               )}
 
               {/* ========================================================================= */}
-              {/* 1. INVOICE */}
+              {/* 1. INVOICE (18+ Satırda Tam Sığan, Kompakt Palet & Banka/Origin Düzeni) */}
               {/* ========================================================================= */}
-              {activeTab === 'invoice' && (
-                <div className="bg-white p-6 mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300" style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
+              {activeTab === 'invoice' && (() => {
+                const isInvDense = totalInvoiceRowCount >= 14;
+                const isInvUltraDense = totalInvoiceRowCount >= 20;
+                const dynamicInvRowPad = isInvUltraDense
+                  ? 'py-[1.5px] px-1.5 text-[8.5px] leading-tight'
+                  : isInvDense
+                  ? 'py-[2.5px] px-2 text-[9px] leading-tight'
+                  : 'py-1.5 px-2 text-[10px]';
+
+                return (
+                <div className={`bg-white ${isInvDense ? 'py-4 px-5' : 'p-6'} mx-auto w-full shadow-lg relative print-page flex flex-col justify-between font-sans text-black border border-slate-300`} style={{ width: '210mm', height: '287mm', minHeight: '287mm' }}>
                   
                   {/* ÜST BÖLÜM */}
                   <div className="shrink-0">
-                    <div className="flex flex-col items-center mb-2">
-                      {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className="h-20 max-w-[240px] object-contain" />}
+                    <div className={`flex flex-col items-center ${isInvDense ? 'mb-1' : 'mb-2'}`}>
+                      {exporter?.logo && <img src={exporter.logo} alt="Exporter Logo" className={`${isInvDense ? 'h-16 max-h-[58px]' : 'h-20'} max-w-[240px] object-contain`} />}
                     </div>
                     
-                    <div className="text-[10px] mb-3">
-                       <div className="font-extrabold mb-1 text-[11px] text-black">{exporter?.address}</div>
+                    <div className={`text-[10px] ${isInvDense ? 'mb-2' : 'mb-3'}`}>
+                       <div className="font-extrabold mb-0.5 text-[11px] text-black">{exporter?.address}</div>
                        <div className="grid grid-cols-[65px_145px_100px_1fr] gap-x-2 gap-y-0.5 max-w-lg items-center">
                           <div className="text-[#0047b3] font-bold whitespace-nowrap">Tel:</div>
                           <div className="font-medium text-black whitespace-nowrap">{exporter?.phone}</div>
@@ -4507,10 +4519,10 @@
                     </div>
 
                     {/* CONSIGNEE & INVOICE BANNER */}
-                    <div className="flex justify-between items-stretch mb-3 gap-4">
-                       <div className="border border-slate-300 rounded-xl p-3.5 w-[57%] min-h-[104px] text-[10.5px] flex flex-col justify-between bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                    <div className={`flex justify-between items-stretch ${isInvDense ? 'mb-2' : 'mb-3'} gap-4`}>
+                       <div className={`border border-slate-300 rounded-xl ${isInvDense ? 'p-2.5 min-h-[88px]' : 'p-3.5 min-h-[104px]'} w-[57%] text-[10.5px] flex flex-col justify-between bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]`}>
                          <div>
-                           <div className="font-black text-[13.5px] uppercase text-black leading-snug">{customer?.name}</div>
+                           <div className={`font-black ${isInvDense ? 'text-[12.5px]' : 'text-[13.5px]'} uppercase text-black leading-snug`}>{customer?.name}</div>
                            <div className="mt-0.5 text-black leading-snug">{customer?.address}</div>
                            <div className="flex justify-between items-baseline mt-1">
                              <span className="font-extrabold uppercase text-black">{customer?.country}</span>
@@ -4523,7 +4535,7 @@
                          </div>
 
                          {hasCustomDelivery && (
-                           <div className="pt-2 mt-2 border-t border-slate-200 text-[9px] leading-tight">
+                           <div className="pt-1.5 mt-1.5 border-t border-slate-200 text-[9px] leading-tight">
                              <span className="text-[#a80000] font-black uppercase tracking-wide">DELIVERY ADDRESS: </span>
                              <span className="text-[#0047b3] font-bold whitespace-pre-line">{customDeliveryAddress}</span>
                            </div>
@@ -4533,20 +4545,20 @@
                        <div className="w-[41%] relative flex flex-col justify-between">
                          <StampImage className="absolute -top-[68px] left-1/2 -translate-x-1/2 z-20" maxW="185px" maxH="82px" />
                          
-                         <div className="bg-[#a80000] text-white text-center font-black text-[15px] py-1.5 px-2 rounded-lg uppercase tracking-widest shadow-sm whitespace-nowrap">
+                         <div className={`bg-[#a80000] text-white text-center font-black ${isInvDense ? 'text-[14px] py-1' : 'text-[15px] py-1.5'} px-2 rounded-lg uppercase tracking-widest shadow-sm whitespace-nowrap`}>
                            {invoiceDocTitle}
                          </div>
-                         <div className="border border-slate-300 rounded-xl bg-white px-3.5 py-2 flex-1 flex flex-col justify-center mt-2">
+                         <div className={`border border-slate-300 rounded-xl bg-white px-3.5 ${isInvDense ? 'py-1.5 mt-1.5' : 'py-2 mt-2'} flex-1 flex flex-col justify-center`}>
                            <div className="text-[10px] font-bold divide-y divide-slate-200">
-                             <div className="flex justify-between py-1">
+                             <div className="flex justify-between py-0.5">
                                <span className="text-black font-bold">Delivery Date</span>
                                <span className="text-right text-black font-extrabold">{formattedDeliveryDate}</span>
                              </div>
-                             <div className="flex justify-between py-1">
+                             <div className="flex justify-between py-0.5">
                                <span className="text-black font-bold">Date of Invoice</span>
                                <span className="text-right text-black font-extrabold">{invoiceDate}</span>
                              </div>
-                             <div className="flex justify-between py-1">
+                             <div className="flex justify-between py-0.5">
                                <span className="text-black font-bold">Invoice Number</span>
                                <span className="text-right text-black font-black">{checklist?.invoiceNumber}</span>
                              </div>
@@ -4557,270 +4569,289 @@
                   </div>
 
                   {/* ORTA & ALT ENTEGRE TABLO BLOĞU */}
-                  <div className="flex-1 flex flex-col border border-slate-300 rounded-t-xl overflow-hidden">
-                    <table className="w-full text-left border-collapse" style={{tableLayout: 'fixed'}}>
-                      <colgroup>
-                        <col className="w-[17.5%]" />
-                        <col className="w-[5%]" />
-                        <col className="w-[23.5%]" />
-                        <col className="w-[15%]" />
-                        <col className="w-[9.5%]" />
-                        <col className="w-[14%]" />
-                        <col className="w-[15.5%]" />
-                      </colgroup>
-                      <thead>
-                        <tr className="bg-[#a80000] text-white text-center">
-                          <th colSpan="4" className="border-r border-b border-white/30 py-1.5 px-1 font-extrabold uppercase tracking-wider text-[10px]">
-                            DESCRIPTION OF THE GOODS
-                          </th>
-                          <th rowSpan="2" className="border-r border-white/30 p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
-                            QUANTITY
-                          </th>
-                          <th rowSpan="2" className="border-r border-white/30 p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
-                            UNIT PRICE
-                          </th>
-                          <th rowSpan="2" className="p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
-                            TOTAL
-                          </th>
-                        </tr>
-                        <tr className="bg-[#a80000] text-white text-center text-[9px] border-b border-slate-300">
-                          <th className="font-bold border-r border-white/30 py-1 px-1 whitespace-nowrap">Order No</th>
-                          <th className="font-bold border-r border-white/30 py-1 px-0.5 whitespace-nowrap">Pos No</th>
-                          <th className="font-bold border-r border-white/30 py-1 px-1 whitespace-nowrap">Part Name</th>
-                          <th className="font-bold border-r border-white/30 py-1 px-1 whitespace-nowrap">Drawing No</th>
-                        </tr>
-                      </thead>
-                      <tbody className="align-middle text-black">
-                        {/* 1. MALZEME SATIRLARI */}
-                        {invoiceItems.map((item, idx) => {
-                            const adet = parseFloat(item.adet) || 0;
-                            const fiyat = parseFloat(item.fiyat) || 0;
-                            const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
-                            const isEven = idx % 2 === 1;
-                            const zebraBg = isEven ? 'bg-[#eef2f7]' : 'bg-white';
-                            const orderStr = String(item.sipRefNo || '');
-                            const dwgStr = cleanDrawingNo(item.resimNo);
-                            const orderFontClass = orderStr.length > 15 ? 'text-[8.5px] tracking-tighter leading-tight' : 'leading-snug';
-                            const dwgFontClass = dwgStr.length > 14 ? 'text-[8.5px] tracking-tighter leading-tight' : 'leading-snug';
+                  <div className="flex-1 flex flex-col justify-between border border-slate-300 rounded-t-xl overflow-hidden min-h-0">
+                    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                      <table className="w-full text-left border-collapse" style={{tableLayout: 'fixed'}}>
+                        <colgroup>
+                          <col className="w-[17.5%]" />
+                          <col className="w-[5%]" />
+                          <col className="w-[23.5%]" />
+                          <col className="w-[15%]" />
+                          <col className="w-[9.5%]" />
+                          <col className="w-[14%]" />
+                          <col className="w-[15.5%]" />
+                        </colgroup>
+                        <thead>
+                          <tr className="bg-[#a80000] text-white text-center">
+                            <th colSpan="4" className={`border-r border-b border-white/30 ${isInvDense ? 'py-1' : 'py-1.5'} px-1 font-extrabold uppercase tracking-wider text-[10px]`}>
+                              DESCRIPTION OF THE GOODS
+                            </th>
+                            <th rowSpan="2" className="border-r border-white/30 p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
+                              QUANTITY
+                            </th>
+                            <th rowSpan="2" className="border-r border-white/30 p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
+                              UNIT PRICE
+                            </th>
+                            <th rowSpan="2" className="p-1 uppercase font-extrabold align-middle tracking-wider text-[10px]">
+                              TOTAL
+                            </th>
+                          </tr>
+                          <tr className="bg-[#a80000] text-white text-center text-[9px] border-b border-slate-300">
+                            <th className="font-bold border-r border-white/30 py-0.5 px-1 whitespace-nowrap">Order No</th>
+                            <th className="font-bold border-r border-white/30 py-0.5 px-0.5 whitespace-nowrap">Pos No</th>
+                            <th className="font-bold border-r border-white/30 py-0.5 px-1 whitespace-nowrap">Part Name</th>
+                            <th className="font-bold border-r border-white/30 py-0.5 px-1 whitespace-nowrap">Drawing No</th>
+                          </tr>
+                        </thead>
+                        <tbody className="align-middle text-black">
+                          {/* 1. MALZEME SATIRLARI */}
+                          {invoiceItems.map((item, idx) => {
+                              const adet = parseFloat(item.adet) || 0;
+                              const fiyat = parseFloat(item.fiyat) || 0;
+                              const tutar = parseFloat(item.tutar) || (adet * fiyat) || 0;
+                              const isEven = idx % 2 === 1;
+                              const zebraBg = isEven ? 'bg-[#eef2f7]' : 'bg-white';
+                              const orderStr = String(item.sipRefNo || '');
+                              const dwgStr = cleanDrawingNo(item.resimNo);
+                              const orderFontClass = orderStr.length > 15 ? 'text-[8.5px] tracking-tighter leading-tight' : 'leading-tight';
+                              const dwgFontClass = dwgStr.length > 14 ? 'text-[8.5px] tracking-tighter leading-tight' : 'leading-tight';
 
-                            return (
-                              <tr key={idx} className={`${zebraBg} border-b border-slate-300`}>
-                                <td className={`border-r border-slate-300 ${invRowPad} ${orderFontClass} break-words font-medium`}>{orderStr}</td>
-                                <td className={`border-r border-slate-300 ${invRowPad} text-center`}>{item.posNo}</td>
-                                <td className={`border-r border-slate-300 ${invRowPad} font-bold leading-snug break-words`}>{item.parcaAdi}</td>
-                                <td className={`border-r border-slate-300 ${invRowPad} ${dwgFontClass} break-words font-medium`}>{dwgStr}</td>
-                                <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap font-extrabold`}>{adet} PCS</td>
-                                <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap`}>{fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
-                                <td className={`${invRowPad} text-right font-extrabold whitespace-nowrap`}>{tutar.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
-                              </tr>
-                            );
-                        })}
+                              return (
+                                <tr key={idx} className={`${zebraBg} border-b border-slate-300`}>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad} ${orderFontClass} break-words font-medium`}>{orderStr}</td>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad} text-center`}>{item.posNo}</td>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad} font-bold leading-tight break-words`}>{item.parcaAdi}</td>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad} ${dwgFontClass} break-words font-medium`}>{dwgStr}</td>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad} text-right whitespace-nowrap font-extrabold`}>{adet} PCS</td>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad} text-right whitespace-nowrap`}>{fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
+                                  <td className={`${dynamicInvRowPad} text-right font-extrabold whitespace-nowrap`}>{tutar.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
+                                </tr>
+                              );
+                          })}
 
-                        {/* 2. EK MALİYET SATIRLARI (FREIGHT, PATTERN, MACHINING, QUALITY CONTROL VB.) */}
-                        {extraCharges.map((ec, ecIdx) => {
-                            const totalIdx = invoiceItems.length + ecIdx;
+                          {/* 2. EK MALİYET SATIRLARI */}
+                          {extraCharges.map((ec, ecIdx) => {
+                              const totalIdx = invoiceItems.length + ecIdx;
+                              const zebraBg = totalIdx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
+                              const adet = parseFloat(String(ec.adet ?? 1).replace(',', '.')) || 1;
+                              const fiyat = parseFloat(String(ec.fiyat ?? 0).replace(',', '.')) || 0;
+                              const tutar = parseFloat(String(ec.tutar ?? 0).replace(',', '.')) || (adet * fiyat) || 0;
+                              const orderStr = String(ec.sipRefNo || '');
+
+                              return (
+                                <tr key={`ec-${ecIdx}`} className={`${zebraBg} border-b border-slate-300`}>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad} break-words font-medium`}>{orderStr}</td>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad} text-center`}></td>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad} font-bold leading-tight break-words text-black`}>{ec.description}</td>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad}`}></td>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad} text-right whitespace-nowrap font-extrabold`}>{adet} PCS</td>
+                                  <td className={`border-r border-slate-300 ${dynamicInvRowPad} text-right whitespace-nowrap`}>{fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
+                                  <td className={`${dynamicInvRowPad} text-right font-extrabold whitespace-nowrap`}>{tutar.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
+                                </tr>
+                              );
+                          })}
+
+                          {/* 3. TAMAMLAYICI BOŞ ZEBRA SATIRLARI */}
+                          {Array.from({ length: emptyZebraCount }).map((_, eIdx) => {
+                            const totalIdx = totalInvoiceRowCount + eIdx;
                             const zebraBg = totalIdx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
-                            const adet = parseFloat(String(ec.adet ?? 1).replace(',', '.')) || 1;
-                            const fiyat = parseFloat(String(ec.fiyat ?? 0).replace(',', '.')) || 0;
-                            const tutar = parseFloat(String(ec.tutar ?? 0).replace(',', '.')) || (adet * fiyat) || 0;
-                            const orderStr = String(ec.sipRefNo || '');
-
                             return (
-                              <tr key={`ec-${ecIdx}`} className={`${zebraBg} border-b border-slate-300`}>
-                                <td className={`border-r border-slate-300 ${invRowPad} break-words font-medium`}>{orderStr}</td>
-                                <td className={`border-r border-slate-300 ${invRowPad} text-center`}></td>
-                                <td className={`border-r border-slate-300 ${invRowPad} font-bold leading-snug break-words text-black`}>{ec.description}</td>
-                                <td className={`border-r border-slate-300 ${invRowPad}`}></td>
-                                <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap font-extrabold`}>{adet} PCS</td>
-                                <td className={`border-r border-slate-300 ${invRowPad} text-right whitespace-nowrap`}>{fiyat.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
-                                <td className={`${invRowPad} text-right font-extrabold whitespace-nowrap`}>{tutar.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</td>
+                              <tr key={`empty-${eIdx}`} className={`${zebraBg} border-b border-slate-300 h-[24px]`}>
+                                <td className="border-r border-slate-300"></td>
+                                <td className="border-r border-slate-300"></td>
+                                <td className="border-r border-slate-300"></td>
+                                <td className="border-r border-slate-300"></td>
+                                <td className="border-r border-slate-300"></td>
+                                <td className="border-r border-slate-300"></td>
+                                <td></td>
                               </tr>
                             );
-                        })}
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
 
-                        {/* 3. TAMAMLAYICI BOŞ ZEBRA SATIRLARI */}
-                        {Array.from({ length: emptyZebraCount }).map((_, eIdx) => {
-                          const totalIdx = totalInvoiceRowCount + eIdx;
-                          const zebraBg = totalIdx % 2 === 1 ? 'bg-[#eef2f7]' : 'bg-white';
-                          return (
-                            <tr key={`empty-${eIdx}`} className={`${zebraBg} border-b border-slate-300 h-[24px]`}>
-                              <td className="border-r border-slate-300"></td>
-                              <td className="border-r border-slate-300"></td>
-                              <td className="border-r border-slate-300"></td>
-                              <td className="border-r border-slate-300"></td>
-                              <td className="border-r border-slate-300"></td>
-                              <td className="border-r border-slate-300"></td>
-                              <td></td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    {/* ALT SABİT BLOK (ASLA KESİLMEZ) */}
+                    <div className="shrink-0">
+                      {/* SHIPMENT NO / BOOKING NO / CONTAINER NO BLOĞU */}
+                      {hasContainerInfo && (
+                        <div className="bg-white border-t border-slate-300 px-3 py-1 flex flex-wrap items-center gap-6 text-[9.5px]">
+                          {shipmentNo && (
+                            <div className="font-black text-[#a80000]">
+                              {shipmentNo.toLowerCase().startsWith('shipment') ? shipmentNo : `Shipment No. ${shipmentNo}`}
+                            </div>
+                          )}
+                          {bookingNo && (
+                            <div className="font-extrabold text-[#003d99]">
+                              {bookingNo.toLowerCase().startsWith('booking') ? bookingNo : `Booking ${bookingNo}`}
+                            </div>
+                          )}
+                          {containerNo && (
+                            <div className="font-extrabold text-[#0047b3] flex items-center gap-1">
+                              <Icon name="package" size={12} className="text-[#0047b3]" />
+                              <span>{containerNo}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
-                    <div className="flex-1 bg-white min-h-[6px]"></div>
-
-                    {/* SHIPMENT NO / BOOKING NO / CONTAINER NO BLOĞU */}
-                    {hasContainerInfo && (
-                      <div className="bg-white border-t border-slate-300 px-3 py-1.5 flex flex-wrap items-center gap-6 text-[10px] shrink-0">
-                        {shipmentNo && (
-                          <div className="font-black text-[#a80000]">
-                            {shipmentNo.toLowerCase().startsWith('shipment') ? shipmentNo : `Shipment No. ${shipmentNo}`}
-                          </div>
-                        )}
-                        {bookingNo && (
-                          <div className="font-extrabold text-[#003d99]">
-                            {bookingNo.toLowerCase().startsWith('booking') ? bookingNo : `Booking ${bookingNo}`}
-                          </div>
-                        )}
-                        {containerNo && (
-                          <div className="font-extrabold text-[#0047b3] flex items-center gap-1">
-                            <Icon name="package" size={13} className="text-[#0047b3]" />
-                            <span>{containerNo}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <table className="w-full text-left border-collapse border-t border-slate-300 shrink-0" style={{tableLayout: 'fixed'}}>
-                      <colgroup>
-                        <col className="w-[58%]" />
-                        <col className="w-[42%]" />
-                      </colgroup>
-                      <tbody>
-                        <tr className="border-b border-slate-300">
-                          <td className="border-r border-slate-300 p-2 text-[#003d99] font-bold text-[8.5px] leading-snug bg-[#eef2f7] align-middle">
-                            According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
-                          </td>
-                          <td className="p-2.5 bg-white align-bottom">
-                            {isFreeOfCharge && (
-                              <div className="text-[8px] font-extrabold text-[#a80000] uppercase leading-tight mb-1">
-                                FREE OF CHARGE. VALUE FOR CUSTOMS PURPOSES ONLY.
+                      <table className="w-full text-left border-collapse border-t border-slate-300" style={{tableLayout: 'fixed'}}>
+                        <colgroup>
+                          <col className="w-[58%]" />
+                          <col className="w-[42%]" />
+                        </colgroup>
+                        <tbody>
+                          <tr className="border-b border-slate-300">
+                            <td className={`border-r border-slate-300 ${isInvDense ? 'p-1.5 text-[8px]' : 'p-2 text-[8.5px]'} text-[#003d99] font-bold leading-snug bg-[#eef2f7] align-middle`}>
+                              According to regulation (EU) 2023/1214 from European Council dated 23.06.2023 the exporter of the products covered by this document declares that, no iron and steel products originating in Russia were processed.
+                            </td>
+                            <td className={`${isInvDense ? 'p-2' : 'p-2.5'} bg-white align-bottom`}>
+                              {isFreeOfCharge && (
+                                <div className="text-[8px] font-extrabold text-[#a80000] uppercase leading-tight mb-1">
+                                  FREE OF CHARGE. VALUE FOR CUSTOMS PURPOSES ONLY.
+                                </div>
+                              )}
+                              <div className="flex justify-between items-end font-extrabold text-[11px] text-black">
+                                <span>Net Amount</span>
+                                <span>{netInvoiceAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
                               </div>
-                            )}
-                            <div className="flex justify-between items-end font-extrabold text-[11px] text-black">
-                              <span>Net Amount</span>
-                              <span>{netInvoiceAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                          </tr>
 
-                        <tr>
-                          <td className="border-r border-slate-300 p-2.5 align-top bg-white">
-                            <div className="grid grid-cols-[118px_1fr] gap-x-2 gap-y-0.5 text-[9px] uppercase items-center">
-                               <div className="text-black font-extrabold">NET WEIGHT :</div><div className="text-black font-semibold">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</div>
-                               <div className="text-black font-extrabold">GROSS WEIGHT :</div><div className="text-black font-semibold">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</div>
-                               <div className="text-black font-extrabold">QUANTITY :</div><div className="text-black font-semibold">{totals?.totalAdet?.toLocaleString('tr-TR')} PCS</div>
-                               <div className="text-black font-extrabold">PACKED IN :</div>
-                               <div className="text-black font-semibold flex items-center justify-between pr-2">
-                                 <span>{totals?.paletCount} PALLETS</span>
-                                 <CarrierBadge transporter={transporter} />
-                               </div>
-                               <div className="text-black font-extrabold self-start">PALLET DIMENSIONS :</div>
-                               <div className="text-black text-[8.5px] leading-tight font-semibold normal-case">{palletSummary}</div>
-                               {customer?.htsNo && (
-                                 <>
-                                   <div className="text-black font-extrabold pt-0.5">HS / HTS CODE :</div>
-                                   <div className="text-[#003d99] font-black pt-0.5">{customer.htsNo}</div>
-                                 </>
-                               )}
-                               <div className="text-black font-extrabold pt-0.5">ORIGIN :</div>
-                               <div className="text-black font-extrabold flex items-center gap-1.5 pt-0.5">
-                                 TÜRKİYE TR <span className="bg-[#a80000] text-white px-1 text-[7px] rounded-sm font-black">C*</span>
-                               </div>
-                               
-                               <div className="col-span-2 border-t border-slate-300 my-1"></div>
+                          <tr>
+                            <td className={`border-r border-slate-300 ${isInvDense ? 'p-2' : 'p-2.5'} align-top bg-white`}>
+                              <div className="grid grid-cols-[110px_1fr] gap-x-2 gap-y-[2px] text-[8.8px] uppercase items-center">
+                                 <div className="text-black font-extrabold">NET WEIGHT :</div>
+                                 <div className="text-black font-semibold">{totals?.totalNetKg?.toLocaleString('tr-TR')} KGS</div>
 
-                               <div className="text-black font-extrabold">OUR BANK DETAILS</div>
-                               <div className="text-black font-bold">{selectedBank?.bankName || '-'}</div>
-                               
-                               <div className="text-black font-extrabold">SWIFT CODE</div>
-                               <div className="text-black font-semibold">{selectedBank?.swift || '-'}</div>
-                               
-                               <div className="text-black font-extrabold">ACCOUNT NO</div>
-                               <div className="text-black font-semibold">-</div>
-                               
-                               <div className="text-black font-extrabold">IBAN NO</div>
-                               <div className="text-black font-extrabold">{selectedBank?.iban || '-'}</div>
-                            </div>
-                          </td>
-                          <td className="p-0 align-top bg-white h-full">
-                            <div className="flex flex-col justify-between h-full font-bold text-[10.5px]" style={{ minHeight: '152px' }}>
-                              <div>
-                                {hasDutyFee ? (
-                                  <div className="flex justify-between items-center px-2.5 py-1.5 text-[#a80000] bg-[#eef2f7] border-b border-slate-300 text-[10.5px]">
-                                    <span className="font-black">TAX</span>
-                                    <span className="font-black text-[9.5px] uppercase px-1 text-center">{effectiveDutyLabel}</span>
-                                    <span className="font-black whitespace-nowrap">{dutyFeeAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
+                                 <div className="text-black font-extrabold">GROSS WEIGHT :</div>
+                                 <div className="text-black font-semibold">{totals?.totalBrutKg?.toLocaleString('tr-TR')} KGS</div>
+
+                                 <div className="text-black font-extrabold">QUANTITY :</div>
+                                 <div className="text-black font-semibold">{totals?.totalAdet?.toLocaleString('tr-TR')} PCS</div>
+
+                                 {/* PACKED IN SATIRINDA DOĞRUDAN PALET ADEDİ VE PALET EBATLARI YER ALIR */}
+                                 <div className="text-black font-extrabold self-start">PACKED IN :</div>
+                                 <div className="text-black leading-tight">
+                                   <span className="font-extrabold">{totals?.paletCount} PALLETS</span>
+                                   {palletSummary && (
+                                     <span className="text-[8px] font-semibold normal-case text-slate-800 ml-1">
+                                       ({palletSummary})
+                                     </span>
+                                   )}
+                                 </div>
+
+                                 {customer?.htsNo && (
+                                   <>
+                                     <div className="text-black font-extrabold">HS / HTS CODE :</div>
+                                     <div className="text-[#003d99] font-black">{customer.htsNo}</div>
+                                   </>
+                                 )}
+
+                                 <div className="text-black font-extrabold">ORIGIN :</div>
+                                 <div className="text-black font-extrabold flex items-center gap-1.5">
+                                   TÜRKİYE TR <span className="bg-[#a80000] text-white px-1 text-[7px] rounded-sm font-black">C*</span>
+                                 </div>
+                                 
+                                 <div className="col-span-2 border-t border-slate-300 my-0.5"></div>
+
+                                 <div className="text-black font-extrabold">OUR BANK DETAILS</div>
+                                 <div className="text-black font-bold">{selectedBank?.bankName || '-'}</div>
+                                 
+                                 <div className="text-black font-extrabold">SWIFT CODE</div>
+                                 <div className="text-black font-semibold">{selectedBank?.swift || '-'}</div>
+                                 
+                                 {selectedBank?.accountNo && String(selectedBank.accountNo).trim() !== '' && (
+                                   <>
+                                     <div className="text-black font-extrabold">ACCOUNT NO</div>
+                                     <div className="text-black font-semibold">{selectedBank.accountNo}</div>
+                                   </>
+                                 )}
+                                 
+                                 <div className="text-black font-extrabold">IBAN NO</div>
+                                 <div className="text-black font-extrabold">{selectedBank?.iban || '-'}</div>
+                              </div>
+                            </td>
+                            <td className="p-0 align-top bg-white h-full">
+                              <div className="flex flex-col justify-between h-full font-bold text-[10.5px]" style={{ minHeight: isInvDense ? '132px' : '148px' }}>
+                                <div>
+                                  {hasDutyFee ? (
+                                    <div className="flex justify-between items-center px-2.5 py-1 text-[#a80000] bg-[#eef2f7] border-b border-slate-300 text-[10px]">
+                                      <span className="font-black">TAX</span>
+                                      <span className="font-black text-[9px] uppercase px-1 text-center">{effectiveDutyLabel}</span>
+                                      <span className="font-black whitespace-nowrap">{dutyFeeAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex justify-between items-center px-2.5 py-1 text-[#003d99] bg-[#eef2f7] border-b border-slate-300 text-[10.5px]">
+                                      <span className="font-extrabold">VAT</span>
+                                      <span className="font-extrabold">0,00 .-{getSymbol(currency)}</span>
+                                    </div>
+                                  )}
+
+                                  <div className="flex justify-between items-center px-2.5 py-1.5 border-b-4 border-double border-slate-400 text-[11px] bg-white">
+                                     <span className="font-extrabold text-black">Invoice Amount</span>
+                                     <span className="text-[#a80000] text-[9.5px] font-black uppercase text-center px-1">{transporter?.deliveryTerm} {customer?.country}</span>
+                                     <span className="font-black text-black whitespace-nowrap">{finalInvoiceAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
                                   </div>
-                                ) : (
-                                  <div className="flex justify-between items-center px-2.5 py-1.5 text-[#003d99] bg-[#eef2f7] border-b border-slate-300 text-[11px]">
-                                    <span className="font-extrabold">VAT</span>
-                                    <span className="font-extrabold">0,00 .-{getSymbol(currency)}</span>
-                                  </div>
-                                )}
 
-                                <div className="flex justify-between items-center px-2.5 py-2 border-b-4 border-double border-slate-400 text-[11px] bg-white">
-                                   <span className="font-extrabold text-black">Invoice Amount</span>
-                                   <span className="text-[#a80000] text-[9.5px] font-black uppercase text-center px-1">{transporter?.deliveryTerm} {customer?.country}</span>
-                                   <span className="font-black text-black whitespace-nowrap">{finalInvoiceAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
+                                  {hasDownPayment && (
+                                    <div>
+                                      <div className="flex justify-between items-center px-2.5 py-1 text-[#a80000] font-extrabold text-[9.5px] border-b border-slate-200">
+                                        <span className="underline">DOWN PAYMENT ({downPaymentRate}%)</span>
+                                        <span className="underline whitespace-nowrap">
+                                          {downPaymentAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex justify-between items-center px-2.5 py-1 text-[#0047b3] font-extrabold text-[10px]">
+                                        <span className="underline">REMAINING AMOUNT</span>
+                                        <span className="underline whitespace-nowrap">
+                                          {remainingAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
 
-                                {hasDownPayment && (
-                                  <div>
-                                    <div className="flex justify-between items-center px-2.5 py-1.5 text-[#a80000] font-extrabold text-[10px] border-b border-slate-200">
-                                      <span className="underline">DOWN PAYMENT ({downPaymentRate}%)</span>
-                                      <span className="underline whitespace-nowrap">
-                                        {downPaymentAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}
-                                      </span>
-                                    </div>
-
-                                    <div className="flex justify-between items-center px-2.5 py-1.5 text-[#0047b3] font-extrabold text-[10.5px]">
-                                      <span className="underline">REMAINING AMOUNT</span>
-                                      <span className="underline whitespace-nowrap">
-                                        {remainingAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="py-2 px-2 text-center bg-[#eef2f7] border-t border-b border-slate-300 my-auto">
-                                <span className="text-[#003d99] italic text-[8.5px] font-semibold leading-tight block">
-                                  {getAmountInWords(hasDownPayment ? remainingAmount : finalInvoiceAmount, currency)}
-                                </span>
-                                {isFreeOfCharge && (
-                                  <span className="text-[#a80000] font-bold text-[8px] block mt-0.5 uppercase not-italic">
-                                    Free of charge. Value for customs purposes only.
+                                <div className="py-1.5 px-2 text-center bg-[#eef2f7] border-t border-b border-slate-300 my-auto">
+                                  <span className="text-[#003d99] italic text-[8.5px] font-semibold leading-tight block">
+                                    {getAmountInWords(hasDownPayment ? remainingAmount : finalInvoiceAmount, currency)}
                                   </span>
-                                )}
+                                  {isFreeOfCharge && (
+                                    <span className="text-[#a80000] font-bold text-[8px] block mt-0.5 uppercase not-italic">
+                                      Free of charge. Value for customs purposes only.
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
                   {/* FOOTER */}
-                  <div className="mt-2 flex flex-col items-center justify-center shrink-0">
-                    <div className="flex flex-wrap justify-center gap-6 w-full px-6 mb-1.5 text-[#0047b3] text-[9.5px] font-medium">
+                  <div className={`${isInvDense ? 'mt-1' : 'mt-2'} flex flex-col items-center justify-center shrink-0`}>
+                    <div className="flex flex-wrap justify-center gap-6 w-full px-6 mb-1 text-[#0047b3] text-[9px] font-medium">
                       {customer?.contacts && customer.contacts.filter(c => c.email).length > 0 ? (
                         customer.contacts.filter(c => c.email).map((c, i) => (
                           <a key={i} href={`mailto:${c.email}`} className="underline flex items-center gap-1">
-                            <Icon name="mail" size={11}/> {c.name ? `${c.name} (${c.email})` : c.email}
+                            <Icon name="mail" size={10}/> {c.name ? `${c.name} (${c.email})` : c.email}
                           </a>
                         ))
                       ) : null}
                     </div>
-                    <div className="w-full text-center text-[9px] bg-[#e2e8f0] border border-slate-300 rounded-b-lg py-1.5 px-2 font-bold text-black">
+                    <div className={`w-full text-center ${isInvDense ? 'text-[8.5px] py-1' : 'text-[9px] py-1.5'} bg-[#e2e8f0] border border-slate-300 rounded-b-lg px-2 font-bold text-black`}>
                       {exporter?.name}<br/>
-                      <span className="font-normal text-[8.5px]">{exporter?.address} Tel: {exporter?.phone} Fax: {exporter?.fax}</span><br/>
+                      <span className="font-normal text-[8px]">{exporter?.address} Tel: {exporter?.phone} Fax: {exporter?.fax}</span><br/>
                       VAT ID No: {exporter?.vatNo}
                     </div>
                   </div>
 
                 </div>
-              )}
+                );
+              })()}
 
               {/* ========================================================================= */}
               {/* 2. PACKING LIST / ÇEKİ LİSTESİ (Alt Barları Koru & Tabloyu Kalan Alana Yay) */}
