@@ -1689,7 +1689,7 @@
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">TESLİM ŞEKLİ</label>
                       <select className="w-full px-3 py-2 border rounded-lg text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500" value={deliveryTerm} onChange={e => setDeliveryTerm(e.target.value)}>
-                        <option value="FOB">FOB</option><option value="EXW">EXW</option><option value="CIF">CIF</option><option value="DAP">DAP</option><option value="DDP">DDP</option>
+                        <option value="FCA">FCA</option><option value="EXW">EXW</option><option value="FOB">FOB</option><option value="CIF">CIF</option><option value="DAP">DAP</option><option value="DDP">DDP</option>
                       </select>
                     </div>
                     <div>
@@ -3541,6 +3541,16 @@
       return '-';
     };
 
+    // FCA ve EXW Teslim Şekillerinde Müşteri Ülkesi Yerine "Körfez" Yazdıran Yardımcı Fonksiyon
+    const formatDeliveryTermText = (term, country) => {
+      const t = String(term || '').trim().toUpperCase();
+      if (!t) return country || '';
+      if (t === 'FCA' || t === 'EXW') {
+        return `${t} Körfez`;
+      }
+      return `${t} ${country || ''}`.trim();
+    };
+
     // Duty Fee 2. Hücresine (dutyFeeLabel) Doğrudan Sayı/Tutar Girilmişse Algılayan Yardımcı Fonksiyon
     const parseDirectDutyValue = (val) => {
       if (val === null || val === undefined) return null;
@@ -3917,7 +3927,7 @@
                           )}
 
                           <div className="text-black font-extrabold">DELIVERY TERM :</div>
-                          <div className="text-[#a80000] font-black">{deliveryTerm || 'DAP'} {customer?.country}</div>
+                          <div className="text-[#a80000] font-black">{formatDeliveryTermText(deliveryTerm || 'DAP', customer?.country)}</div>
                         </>
                       )}
 
@@ -3974,7 +3984,7 @@
                         <div className="flex justify-between items-center px-2.5 py-2 border-b-4 border-double border-slate-400 text-[11px] bg-white">
                           <span className="font-extrabold text-black">Total Amount</span>
                           {!isService && (
-                            <span className="text-[#a80000] text-[9.5px] font-black uppercase text-center px-1">{deliveryTerm || 'DAP'} {customer?.country}</span>
+                            <span className="text-[#a80000] text-[9.5px] font-black text-center px-1">{formatDeliveryTermText(deliveryTerm || 'DAP', customer?.country)}</span>
                           )}
                           <span className="font-black text-black whitespace-nowrap">{finalOrderAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} .-{getSymbol(currency)}</span>
                         </div>
@@ -4807,7 +4817,7 @@
 
                                   <div className="flex justify-between items-center px-2.5 py-1.5 border-b-4 border-double border-slate-400 text-[11px] bg-white">
                                      <span className="font-extrabold text-black">Invoice Amount</span>
-                                     <span className="text-[#a80000] text-[9.5px] font-black uppercase text-center px-1">{transporter?.deliveryTerm} {customer?.country}</span>
+                                     <span className="text-[#a80000] text-[9.5px] font-black text-center px-1">{formatDeliveryTermText(transporter?.deliveryTerm, customer?.country)}</span>
                                      <span className="font-black text-black whitespace-nowrap">{finalInvoiceAmount.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2})} .-{getSymbol(currency)}</span>
                                   </div>
 
@@ -5132,8 +5142,8 @@
                                           <div className="flex flex-col items-center justify-center leading-tight">
                                             <CarrierBadge transporter={transporter} />
                                             {transporter?.deliveryTerm && (
-                                              <span className="text-[#a80000] font-extrabold text-[8px] uppercase mt-0.5">
-                                                {transporter.deliveryTerm} {customer?.country || ''}
+                                              <span className="text-[#a80000] font-extrabold text-[8px] mt-0.5">
+                                                {formatDeliveryTermText(transporter.deliveryTerm, customer?.country)}
                                               </span>
                                             )}
                                           </div>
@@ -5376,7 +5386,7 @@
                       </div>
 
                       <div className="font-extrabold text-[#0047b3]">TESLİM ŞEKLİ</div><div className="font-bold">:</div>
-                      <div className="font-extrabold text-[#a80000]">{transporter?.deliveryTerm} {customer?.country}</div>
+                      <div className="font-extrabold text-[#a80000]">{formatDeliveryTermText(transporter?.deliveryTerm, customer?.country)}</div>
                       
                       <div className="font-extrabold text-[#0047b3]">GÜMRÜKLEME</div><div className="font-bold">:</div>
                       <div className="font-extrabold text-black">SAYGILI GÜMRÜK MÜŞAVİRLİĞİ LTD. ŞTİ.</div>
@@ -5481,7 +5491,7 @@
                         </div>
                         
                         <div className="font-extrabold text-[#0047b3] pt-2">SATIŞ ŞEKLİ</div><div className="font-bold pt-2">:</div>
-                        <div className="font-extrabold text-[#a80000] pt-2">{transporter?.deliveryTerm} {customer?.country}</div>
+                        <div className="font-extrabold text-[#a80000] pt-2">{formatDeliveryTermText(transporter?.deliveryTerm, customer?.country)}</div>
 
                         {isSeaTransport ? (
                           <>
