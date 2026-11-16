@@ -782,6 +782,7 @@
           deliveryAddress: proforma.deliveryAddress || '',
           selectedBankId: proforma.selectedBankId || '',
           selectedInsuranceId: '',
+          paymentTerms: proforma.paymentTerms || '',
           hasDownPayment: true,
           downPaymentRate: proforma.advanceRate ?? 30,
           isFreeOfCharge: false,
@@ -1981,6 +1982,7 @@
       const [selectedInsuranceId, setSelectedInsuranceId] = useState(initialData?.selectedInsuranceId || '');
       const [customsDescriptionTR, setCustomsDescriptionTR] = useState(initialData?.customsDescriptionTR || 'Yatak');
       const [specialNote, setSpecialNote] = useState(initialData?.specialNote || '');
+      const [paymentTerms, setPaymentTerms] = useState(initialData?.paymentTerms || '');
       const [shipmentNo, setShipmentNo] = useState(initialData?.shipmentNo || '');
       const [bookingNo, setBookingNo] = useState(initialData?.bookingNo || '');
       const [containerNo, setContainerNo] = useState(initialData?.containerNo || '');
@@ -1997,6 +1999,7 @@
       // Tıklayınca Açılan Opsiyonel Alanların Görünürlük State'leri
       const [showDeliveryAddrInput, setShowDeliveryAddrInput] = useState(Boolean(initialData?.deliveryAddress));
       const [showSpecialNoteInput, setShowSpecialNoteInput] = useState(Boolean(initialData?.specialNote));
+      const [showPaymentTermsInput, setShowPaymentTermsInput] = useState(Boolean(initialData?.paymentTerms));
       const [showExtraChargesPanel, setShowExtraChargesPanel] = useState(Boolean(initialData?.extraCharges?.length > 0));
       const [showTaxDutyPanel, setShowTaxDutyPanel] = useState(Boolean(initialData?.hasDutyFee || initialData?.hasDownPayment || initialData?.isFreeOfCharge));
 
@@ -2422,6 +2425,7 @@
           selectedInsuranceId,
           customsDescriptionTR: customsDescriptionTR.trim(),
           specialNote: specialNote.trim(),
+          paymentTerms: paymentTerms.trim(),
           shipmentNo: shipmentNo.trim(),
           bookingNo: bookingNo.trim(),
           containerNo: containerNo.trim(),
@@ -2618,6 +2622,20 @@
                   {specialNote.trim() && <span className="bg-amber-600 text-white text-[9px] px-1.5 py-0.2 rounded-full">✓ Dolu</span>}
                 </button>
 
+                {/* 2.5 Tıklayınca Açılan: Ödeme Notu / Şartı (Payment Terms) */}
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentTermsInput(!showPaymentTermsInput)}
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-bold border flex items-center gap-1.5 transition-colors ${
+                    showPaymentTermsInput || paymentTerms.trim()
+                      ? 'bg-emerald-50 text-emerald-900 border-emerald-300 shadow-sm'
+                      : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-300'
+                  }`}
+                >
+                  <span>💳 Ödeme Şartı</span>
+                  {paymentTerms.trim() && <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.2 rounded-full">✓ Dolu</span>}
+                </button>
+
                 {/* 3. Tıklayınca Açılan: Ek Maliyetler (Freight, Pattern vb.) */}
                 <button
                   type="button"
@@ -2667,7 +2685,7 @@
             </div>
 
             {/* TIKLAYINCA AÇILAN OPSİYONEL KUTULAR (Sadece Açık Olanlar Görünür) */}
-            {(showDeliveryAddrInput || showSpecialNoteInput) && (
+            {(showDeliveryAddrInput || showSpecialNoteInput || showPaymentTermsInput) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1.5 border-t border-slate-200/80">
                 {showDeliveryAddrInput && (
                   <div className="flex items-center gap-2 bg-blue-50/60 border border-blue-200 px-3 py-1.5 rounded-lg">
@@ -2694,6 +2712,20 @@
                       placeholder="Örn: Customs support Marketing 19 6921 RE Duiven..."
                     />
                     <button type="button" onClick={() => setShowSpecialNoteInput(false)} className="text-slate-400 hover:text-slate-600" title="Gizle"><X size={14} /></button>
+                  </div>
+                )}
+
+                {showPaymentTermsInput && (
+                  <div className="flex items-center gap-2 bg-emerald-50/70 border border-emerald-300 px-3 py-1.5 rounded-lg md:col-span-2">
+                    <span className="text-xs font-extrabold text-emerald-900 whitespace-nowrap">💳 Ödeme Şartı (Payment Terms):</span>
+                    <input
+                      type="text"
+                      className="flex-1 px-2.5 py-1 border border-emerald-300 rounded text-xs font-semibold text-emerald-950 bg-white outline-none focus:ring-1 focus:ring-emerald-500"
+                      value={paymentTerms}
+                      onChange={e => setPaymentTerms(e.target.value)}
+                      placeholder="Örn: 25% in advance, 25% before pick up, 50% 30 days after pick up"
+                    />
+                    <button type="button" onClick={() => setShowPaymentTermsInput(false)} className="text-slate-400 hover:text-slate-600" title="Gizle"><X size={14} /></button>
                   </div>
                 )}
               </div>
@@ -4151,6 +4183,7 @@
       const [customDeliveryAddress, setCustomDeliveryAddress] = useState(checklist?.deliveryAddress || '');
       const [customsDescTR, setCustomsDescTR] = useState(checklist?.customsDescriptionTR || 'Yatak');
       const [specialNote, setSpecialNote] = useState(checklist?.specialNote || '');
+      const [paymentTerms, setPaymentTerms] = useState(checklist?.paymentTerms || '');
       const [shipmentNo, setShipmentNo] = useState(checklist?.shipmentNo || '');
       const [bookingNo, setBookingNo] = useState(checklist?.bookingNo || '');
       const [containerNo, setContainerNo] = useState(checklist?.containerNo || '');
@@ -4494,7 +4527,8 @@
                     containerNo,
                     hasDutyFee,
                     dutyFeeRate,
-                    dutyFeeLabel
+                    dutyFeeLabel,
+                    paymentTerms
                   }}
                   exporter={exporter}
                   customer={customer}
@@ -4768,6 +4802,17 @@
                                      </span>
                                    )}
                                  </div>
+
+                                 {(paymentTerms?.trim() || hasDownPayment) && (
+                                   <>
+                                     <div className="text-black font-extrabold self-start">PAYMENT TERMS :</div>
+                                     <div className="text-[#0047b3] font-bold text-[8.5px] leading-tight whitespace-pre-line normal-case">
+                                       {paymentTerms?.trim()
+                                         ? paymentTerms
+                                         : `${downPaymentRate}% ADVANCE PAYMENT PRIOR TO PRODUCTION, ${100 - (Number(downPaymentRate) || 0)}% BALANCE BEFORE SHIPMENT.`}
+                                     </div>
+                                   </>
+                                 )}
 
                                  {customer?.htsNo && (
                                    <>
