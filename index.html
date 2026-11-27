@@ -816,6 +816,22 @@
         setEditingChecklist(null);
       };
 
+      // Tam İhracat Seti içinden yapılan tarih/mail/gemi değişikliklerini anında Buluta kaydeder
+      const handleUpdateChecklistFields = async (checklistId, extraFields) => {
+        if (!checklistId) return;
+        const existing = checklists.find(c => c.id === checklistId);
+        if (!existing) return;
+        const updatedDoc = { ...existing, ...extraFields, id: checklistId };
+
+        setPrintingExportSet(prev => (prev && prev.id === checklistId ? updatedDoc : prev));
+
+        if (isFirebaseConfigured && db) {
+          await getColRef('checklists').doc(checklistId).set(updatedDoc, { merge: true });
+        } else {
+          setChecklists(prev => prev.map(c => c.id === checklistId ? updatedDoc : c));
+        }
+      };
+
       if (authChecking) {
         return (
           <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
@@ -1007,7 +1023,7 @@
 
           {printingChecklist && <PrintModal checklist={printingChecklist} exporter={selectedExporter} customer={customers.find(c => c.id === printingChecklist.customerId)} transporter={transporters.find(t => t.id === printingChecklist.transporterId)} onClose={() => setPrintingChecklist(null)} />}
           
-          {printingExportSet && <ExportSetPrintModal checklist={printingExportSet} exporter={selectedExporter} customer={customers.find(c => c.id === printingExportSet.customerId)} transporter={transporters.find(t => t.id === printingExportSet.transporterId)} onClose={() => setPrintingExportSet(null)} />}
+          {printingExportSet && <ExportSetPrintModal checklist={printingExportSet} exporter={selectedExporter} customer={customers.find(c => c.id === printingExportSet.customerId)} transporter={transporters.find(t => t.id === printingExportSet.transporterId)} onUpdateChecklist={handleUpdateChecklistFields} onClose={() => setPrintingExportSet(null)} />}
         </div>
       );
     }
@@ -2413,6 +2429,7 @@
           return;
         }
         onSaveChecklist({
+          ...(initialData || {}),
           exporterId: exporter.id,
           invoiceNumber: invoiceNumber.trim(),
           checklistDate,
@@ -4171,7 +4188,7 @@
       );
     }
 
-    function ExportSetPrintModal({ checklist, exporter, customer, transporter, onClose }) {
+    function ExportSetPrintModal({ checklist, exporter, customer, transporter, onUpdateChecklist, onClose }) {
       const [activeTab, setActiveTab] = useState('invoice');
       const [showStamp, setShowStamp] = useState(true);
       const [proformaDocTitle, setProformaDocTitle] = useState(checklist?.proformaDocTitle || 'PROFORMA INVOICE');
@@ -4191,8 +4208,9 @@
       const [dutyFeeRate, setDutyFeeRate] = useState(checklist?.dutyFeeRate ?? 12.5);
       const [dutyFeeLabel, setDutyFeeLabel] = useState(checklist?.dutyFeeLabel || '');
       const [copiedKey, setCopiedKey] = useState(null);
+      const [cloudSaveStatus, setCloudSaveStatus] = useState('saved');
 
-      // Sigorta Talimatı İçin Denizyolu & Karayolu Özel Alanları
+      // Sigorta Talimatı İçin Denizyolu & Karayolu Özel Alanları (Buluttan Okur)
       const isSeaTransport = String(transporter?.transportType || '').toLowerCase().includes('deniz');
       const [vesselName, setVesselName] = useState(checklist?.vesselName || '');
       const [vesselFlag, setVesselFlag] = useState(checklist?.vesselFlag || '');
@@ -4202,24 +4220,96 @@
       const [truckPlateNo, setTruckPlateNo] = useState(checklist?.truckPlateNo || '');
       const [loadingDate, setLoadingDate] = useState(checklist?.loadingDate || checklist?.checklistDate || '');
 
-      // Müşteri Sevk Bilgilendirme Maili State'leri (Denizyolu & Karayolu)
+      // Müşteri Sevk Bilgilendirme Maili State'leri (Kayıtlı Veriden Okur)
       const defaultContactFirstName = useMemo(() => {
         const rawName = customer?.contacts?.[0]?.name || '';
         return rawName.trim() ? rawName.trim().split(' ')[0] : (customer?.name || 'Sir / Madam');
       }, [customer]);
 
-      const [mailMode, setMailMode] = useState(isSeaTransport ? 'sea' : 'road');
-      const [mailContactName, setMailContactName] = useState(defaultContactFirstName);
-      const [hasFumigation, setHasFumigation] = useState(true);
-      const [ctrType, setCtrType] = useState("40' HIGH CUBE");
-      const [depotName, setDepotName] = useState('YILPORT INTERNATIONAL PORT');
-      const [depotLocation, setDepotLocation] = useState('GEBZE');
-      const [stuffingMode, setStuffingMode] = useState('PORT');
-      const [pickUpDate, setPickUpDate] = useState(checklist?.checklistDate || '');
-      const [polName, setPolName] = useState('GEBZE');
-      const [podName, setPodName] = useState(checklist?.vesselDestination || customer?.country || '');
-      const [etaDate, setEtaDate] = useState(checklist?.deliveryDate || '');
+      const [mailMode, setMailMode] = useState(checklist?.mailMode || (isSeaTransport ? 'sea' : 'road'));
+      const [mailContactName, setMailContactName] = useState(checklist?.mailContactName ?? defaultContactFirstName);
+      const [hasFumigation, setHasFumigation] = useState(checklist?.hasFumigation ?? true);
+      const [ctrType, setCtrType] = useState(checklist?.ctrType || "40' HIGH CUBE");
+      const [depotName, setDepotName] = useState(checklist?.depotName || 'YILPORT INTERNATIONAL PORT');
+      const [depotLocation, setDepotLocation] = useState(checklist?.depotLocation || 'GEBZE');
+      const [stuffingMode, setStuffingMode] = useState(checklist?.stuffingMode || 'PORT');
+      const [pickUpDate, setPickUpDate] = useState(checklist?.pickUpDate || checklist?.checklistDate || '');
+      const [polName, setPolName] = useState(checklist?.polName || 'GEBZE');
+      const [podName, setPodName] = useState(checklist?.podName || checklist?.vesselDestination || customer?.country || '');
+      const [etaDate, setEtaDate] = useState(checklist?.etaDate || checklist?.deliveryDate || '');
       const mailBodyRef = React.useRef(null);
+      const isFirstRender = React.useRef(true);
+
+      // Güncel tüm alanları tek pakette toplayan yardımcı
+      const buildExportSetPayload = () => ({
+        proformaDocTitle,
+        invoiceDocTitle,
+        hasDownPayment,
+        downPaymentRate: Number(downPaymentRate) || 0,
+        isFreeOfCharge,
+        deliveryDate,
+        deliveryAddress: customDeliveryAddress,
+        customsDescriptionTR: customsDescTR,
+        specialNote,
+        paymentTerms,
+        shipmentNo,
+        bookingNo,
+        containerNo,
+        hasDutyFee,
+        dutyFeeRate: Number(dutyFeeRate) || 0,
+        dutyFeeLabel,
+        vesselName,
+        vesselFlag,
+        vesselImoYear,
+        vesselDestination,
+        portDepartureDate,
+        truckPlateNo,
+        loadingDate,
+        mailMode,
+        mailContactName,
+        hasFumigation,
+        ctrType,
+        depotName,
+        depotLocation,
+        stuffingMode,
+        pickUpDate,
+        polName,
+        podName,
+        etaDate
+      });
+
+      // Alanlardan herhangi biri değiştiğinde 600ms sonra otomatik olarak Buluta kaydeder
+      useEffect(() => {
+        if (isFirstRender.current) {
+          isFirstRender.current = false;
+          return;
+        }
+        if (!onUpdateChecklist || !checklist?.id) return;
+        setCloudSaveStatus('saving');
+        const timer = setTimeout(async () => {
+          try {
+            await onUpdateChecklist(checklist.id, buildExportSetPayload());
+            setCloudSaveStatus('saved');
+          } catch (e) {
+            setCloudSaveStatus('error');
+          }
+        }, 600);
+        return () => clearTimeout(timer);
+      }, [
+        proformaDocTitle, invoiceDocTitle, hasDownPayment, downPaymentRate, isFreeOfCharge,
+        deliveryDate, customDeliveryAddress, customsDescTR, specialNote, paymentTerms,
+        shipmentNo, bookingNo, containerNo, hasDutyFee, dutyFeeRate, dutyFeeLabel,
+        vesselName, vesselFlag, vesselImoYear, vesselDestination, portDepartureDate,
+        truckPlateNo, loadingDate, mailMode, mailContactName, hasFumigation,
+        ctrType, depotName, depotLocation, stuffingMode, pickUpDate, polName, podName, etaDate
+      ]);
+
+      const handleSaveAndClose = async () => {
+        if (onUpdateChecklist && checklist?.id) {
+          await onUpdateChecklist(checklist.id, buildExportSetPayload());
+        }
+        onClose();
+      };
 
       const copyText = (text, key) => {
         if (navigator.clipboard) {
@@ -4487,10 +4577,20 @@
                       Kaşe
                     </label>
                   )}
+                  <span className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold border flex items-center gap-1 ${
+                    cloudSaveStatus === 'saving'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : cloudSaveStatus === 'error'
+                      ? 'bg-red-50 text-red-700 border-red-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}>
+                    <Cloud size={13} />
+                    {cloudSaveStatus === 'saving' ? 'Kaydediliyor...' : cloudSaveStatus === 'error' ? 'Kayıt Hatası' : 'Buluta Kayıtlı'}
+                  </span>
                   <button type="button" onClick={() => window.print()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg font-bold flex items-center shadow-md transition-colors text-xs">
                     <Printer size={15} className="mr-1" /> Yazdır
                   </button>
-                  <button type="button" onClick={onClose} className="bg-slate-300 text-slate-700 hover:bg-slate-400 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors">X</button>
+                  <button type="button" onClick={handleSaveAndClose} className="bg-slate-300 text-slate-700 hover:bg-slate-400 px-3 py-1.5 rounded-lg font-medium text-xs transition-colors">X</button>
                 </div>
               </div>
 
